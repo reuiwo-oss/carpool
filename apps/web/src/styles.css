@@ -1,0 +1,15 @@
+/* Szkielet stylów — docelowo do zastąpienia systemem designu.
+   Paleta robocza: droga nocą — grafit, asfalt, sygnalne bursztynowe światła. */
+:root {
+  --bg: #f6f5f2;
+  --ink: #23272b;
+  --accent: #b4551d;      /* kierunkowskaz */
+  --seat-free: #e8ede6;
+  --seat-free-border: #7c9473;
+  --seat-taken: #d9d4cc;
+  --seat-selected: #b4551d;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, sans-serif; background: var(--bg); color: var(--ink); }
+main { max-width: 720px; margin: 0 auto; padding: 1.5rem 1rem; }
+button { cursor: pointer; }

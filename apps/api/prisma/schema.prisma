@@ -1,0 +1,55 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  DRIVER
+  PASSENGER
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role
+  rides        Ride[]   @relation("DriverRides")
+  bookings     Booking[]
+  createdAt    DateTime @default(now())
+}
+
+model Ride {
+  id          String    @id @default(cuid())
+  driver      User      @relation("DriverRides", fields: [driverId], references: [id])
+  driverId    String
+  carModel    String
+  seatCount   Int       // miejsca pasażerskie
+  origin      String
+  destination String
+  departureAt DateTime
+  // Układ miejsc jako JSON — elastyczny na niestandardowe auta (do doprecyzowania)
+  seatLayout  Json
+  bookings    Booking[]
+  createdAt   DateTime  @default(now())
+}
+
+model Booking {
+  id          String   @id @default(cuid())
+  ride        Ride     @relation(fields: [rideId], references: [id])
+  rideId      String
+  passenger   User     @relation(fields: [passengerId], references: [id])
+  passengerId String
+  seatId      String   // np. "rear-left"
+  createdAt   DateTime @default(now())
+
+  // Jedno miejsce w danym przejeździe może być zajęte tylko raz —
+  // baza pilnuje tego nawet przy równoczesnych rezerwacjach.
+  @@unique([rideId, seatId])
+  // Jeden pasażer — jedno miejsce w danym przejeździe.
+  @@unique([rideId, passengerId])
+}

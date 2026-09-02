@@ -1,0 +1,32 @@
+# Zależności
+node_modules/
+
+# Build output
+dist/
+build/
+apps/web/dist/
+packages/shared/dist/
+
+# Cache narzędzi
+.vite/
+*.tsbuildinfo
+
+# Zmienne środowiskowe — .env.example JEST commitowany, .env NIE
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Logi
+*.log
+npm-debug.log*
+
+# Archiwa / artefakty lokalne
+*.zip
+
+# Systemowe / edytor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json

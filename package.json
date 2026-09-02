@@ -1,0 +1,11 @@
+{
+  "name": "carpool",
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "build:shared": "npm run build --workspace packages/shared",
+    "dev:api": "npm run build:shared && npm run start:dev --workspace apps/api",
+    "dev:web": "npm run build:shared && npm run dev --workspace apps/web",
+    "db:migrate": "npm run prisma:migrate --workspace apps/api"
+  }
+}
