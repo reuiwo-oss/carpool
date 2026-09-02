@@ -32,22 +32,61 @@ export class RidesService {
     });
   }
 
+  /**
+   * Przejazdy zalogowanego kierowcy — ekran „Moje przejazdy" pokazuje obsadę,
+   * więc imiona pasażerów dołączamy tylko tutaj (to zawsze własne przejazdy).
+   */
+  listForDriver(driverId: string) {
+    return this.prisma.ride.findMany({
+      where: { driverId },
+      include: {
+        bookings: { select: { seatId: true, passenger: { select: { name: true } } } },
+      },
+      orderBy: { departureAt: 'asc' },
+    });
+  }
+
   /** Zwraca przejazd z układem miejsc zaktualizowanym o rezerwacje */
-  async getWithSeats(id: string) {
+  async getWithSeats(id: string, viewerId: string) {
     const ride = await this.prisma.ride.findUnique({
       where: { id },
       include: {
         driver: { select: { name: true } },
-        bookings: { select: { seatId: true, passengerId: true } },
+        bookings: {
+          select: { id: true, seatId: true, passengerId: true, passenger: { select: { name: true } } },
+        },
       },
     });
     if (!ride) throw new NotFoundException('Przejazd nie istnieje');
 
-    const taken = new Set(ride.bookings.map((b) => b.seatId));
-    const seats = (ride.seatLayout as unknown as Seat[]).map((s) =>
-      taken.has(s.id) ? { ...s, status: 'TAKEN' as const } : s,
-    );
-    return { ...ride, seats };
+    // Kto siedzi na którym miejscu widzi wyłącznie kierowca tego przejazdu —
+    // pasażerowie dostają sam status „zajęte", bez imion.
+    const isOwner = ride.driverId === viewerId;
+    const bySeat = new Map(ride.bookings.map((b) => [b.seatId, b]));
+
+    const seats = (ride.seatLayout as unknown as Seat[]).map((seat) => {
+      if (seat.status === 'DRIVER') {
+        return isOwner ? { ...seat, who: ride.driver.name } : seat;
+      }
+      const booking = bySeat.get(seat.id);
+      if (!booking) return seat;
+      return {
+        ...seat,
+        status: 'TAKEN' as const,
+        ...(isOwner ? { who: booking.passenger.name } : {}),
+      };
+    });
+
+    return {
+      ...ride,
+      seats,
+      // Bez imion — pasażer musi rozpoznać własną rezerwację (id do anulowania).
+      bookings: ride.bookings.map((b) => ({
+        id: b.id,
+        seatId: b.seatId,
+        passengerId: b.passengerId,
+      })),
+    };
   }
 
   async remove(driverId: string, id: string) {

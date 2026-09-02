@@ -25,7 +25,11 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.message ?? `Błąd ${res.status}`);
+    // Nest zwraca message jako string albo listę błędów walidacji.
+    const message = Array.isArray(body.message) ? body.message.join('. ') : body.message;
+    throw new Error(message ?? `Błąd ${res.status}`);
   }
-  return res.json();
+  // DELETE bywa bez treści — nie wywracaj się na pustym body.
+  const text = await res.text();
+  return (text ? JSON.parse(text) : null) as T;
 }

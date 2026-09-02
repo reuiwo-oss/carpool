@@ -16,10 +16,20 @@ export class RidesController {
     return this.rides.list();
   }
 
+  /**
+   * Przejazdy zalogowanego kierowcy (ekran „Moje przejazdy").
+   * Musi stać przed @Get(':id'), inaczej „mine" trafi w parametr id.
+   */
+  @Get('mine')
+  @Roles('DRIVER')
+  mine(@Req() req: any) {
+    return this.rides.listForDriver(req.user.id);
+  }
+
   /** Szczegóły przejazdu z aktualnym stanem miejsc */
   @Get(':id')
-  get(@Param('id') id: string) {
-    return this.rides.getWithSeats(id);
+  get(@Req() req: any, @Param('id') id: string) {
+    return this.rides.getWithSeats(id, req.user.id);
   }
 
   /** Tylko kierowca tworzy ofertę przejazdu */

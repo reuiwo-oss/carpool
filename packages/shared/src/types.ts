@@ -5,7 +5,11 @@
 
 export type Role = 'DRIVER' | 'PASSENGER';
 
-export type SeatStatus = 'FREE' | 'TAKEN' | 'DRIVER';
+/**
+ * FREE / TAKEN / DRIVER przychodzą z API. MINE wyliczamy po stronie klienta
+ * dla miejsca zalogowanego pasażera — schemat auta rysuje je inaczej.
+ */
+export type SeatStatus = 'FREE' | 'TAKEN' | 'DRIVER' | 'MINE';
 
 export interface Seat {
   /** np. "front-right", "rear-left" — stabilny identyfikator miejsca */
@@ -15,6 +19,8 @@ export interface Seat {
   x: number;
   y: number;
   status: SeatStatus;
+  /** Imię osoby na tym miejscu — API podaje je wyłącznie kierowcy przejazdu. */
+  who?: string;
 }
 
 export interface RideOffer {

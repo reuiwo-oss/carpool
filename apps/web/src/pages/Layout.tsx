@@ -1,19 +1,19 @@
-import { Link, Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../features/auth/AuthContext';
+import TabBar from '../components/TabBar';
+
+/** Ekrany z paskiem zakładek — szczegóły i publikacja mają zamiast niego „wróć". */
+const TAB_ROUTES = ['/', '/community', '/mine'];
 
 export default function Layout() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
+  const { pathname } = useLocation();
+  const showTabs = TAB_ROUTES.includes(pathname);
+
   return (
     <>
-      <header style={{ display: 'flex', gap: '1rem', alignItems: 'center', padding: '0.75rem 1rem', borderBottom: '1px solid #ddd' }}>
-        <Link to="/" style={{ fontWeight: 700, textDecoration: 'none', color: 'inherit' }}>Carpool</Link>
-        {user?.role === 'DRIVER' && <Link to="/rides/new">Nowy przejazd</Link>}
-        <span style={{ marginLeft: 'auto' }}>
-          {user?.name} ({user?.role === 'DRIVER' ? 'kierowca' : 'pasażer'})
-        </span>
-        <button onClick={logout}>Wyloguj</button>
-      </header>
-      <main><Outlet /></main>
+      <Outlet />
+      {showTabs && user && <TabBar role={user.role} />}
     </>
   );
 }

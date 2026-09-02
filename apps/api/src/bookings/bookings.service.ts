@@ -38,7 +38,16 @@ export class BookingsService {
   forPassenger(passengerId: string) {
     return this.prisma.booking.findMany({
       where: { passengerId },
-      include: { ride: { include: { driver: { select: { name: true } } } } },
+      include: {
+        ride: {
+          include: {
+            driver: { select: { name: true } },
+            // Same identyfikatory miejsc — miniatura schematu na ekranie „Moje"
+            // pokazuje obsadę auta, ale imion pasażerowie nie widzą.
+            bookings: { select: { seatId: true } },
+          },
+        },
+      },
       orderBy: { createdAt: 'desc' },
     });
   }
