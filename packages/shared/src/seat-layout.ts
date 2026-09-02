@@ -1,4 +1,4 @@
-import type { Seat } from './types';
+import type { Seat } from './types.js';
 
 /**
  * Generuje domyślny układ miejsc dla auta o zadanej liczbie miejsc pasażerskich.
