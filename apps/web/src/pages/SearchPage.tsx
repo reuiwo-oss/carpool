@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import type { Seat } from '@carpool/shared';
+import { DEFAULT_INTERIOR, seatLayoutFor, type Seat } from '@carpool/shared';
 import { listRides, type RideListItem } from '../features/rides/ridesApi';
 import { useAuth } from '../features/auth/AuthContext';
 import { useToast } from '../components/ToastContext';
@@ -9,14 +9,8 @@ import { ArrowLeftRightIcon, BellIcon, PlusIcon } from '../components/icons';
 import { Avatar, Corners, PrimaryButton } from '../components/ui';
 import { formatWhen, nextDayChips, ridesCount } from '../lib/format';
 
-/** Schemat do stanu pustego: auto z samymi wolnymi fotelami. */
-const EMPTY_MAP_SEATS: Seat[] = [
-  { id: 'driver', label: 'Kierowca', x: 0, y: 0, status: 'DRIVER' },
-  { id: 'a', label: '', x: 2, y: 0, status: 'FREE' },
-  { id: 'b', label: '', x: 0, y: 1, status: 'FREE' },
-  { id: 'c', label: '', x: 1, y: 1, status: 'FREE' },
-  { id: 'd', label: '', x: 2, y: 1, status: 'FREE' },
-];
+/** Schemat do stanu pustego: domyślne wnętrze z samymi wolnymi fotelami. */
+const EMPTY_MAP_SEATS: Seat[] = seatLayoutFor(DEFAULT_INTERIOR);
 
 const norm = (s: string) => s.trim().toLowerCase();
 
@@ -149,7 +143,7 @@ export default function SearchPage() {
             }}>
               <Corners />
               <div style={{ width: 92 }}>
-                <SeatMap seats={EMPTY_MAP_SEATS} mini />
+                <SeatMap seats={EMPTY_MAP_SEATS} interior={DEFAULT_INTERIOR} mini />
               </div>
               <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 24, lineHeight: 1.1, marginTop: 6 }}>
                 {isDriver ? 'Wolna trasa' : 'Nikt jeszcze nie jedzie'}

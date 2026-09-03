@@ -1,5 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { generateSeatLayout, Seat } from '@carpool/shared';
+import { Seat, seatCountOf, seatLayoutFor } from '@carpool/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateRideDto } from './rides.dto';
 
@@ -12,11 +12,13 @@ export class RidesService {
       data: {
         driverId,
         carModel: dto.carModel,
-        seatCount: dto.seatCount,
+        interior: dto.interior,
+        // Liczba miejsc i układ foteli wynikają z wnętrza — nie z formularza.
+        seatCount: seatCountOf(dto.interior),
         origin: dto.origin,
         destination: dto.destination,
         departureAt: new Date(dto.departureAt),
-        seatLayout: generateSeatLayout(dto.seatCount) as unknown as object,
+        seatLayout: seatLayoutFor(dto.interior) as unknown as object,
       },
     });
   }

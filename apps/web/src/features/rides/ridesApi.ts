@@ -10,6 +10,8 @@ export interface RideListItem {
   id: string;
   driverId: string;
   carModel: string;
+  /** Klucz z INTERIORS — z niego wynika liczba miejsc i kształt schematu. */
+  interior: string;
   seatCount: number;
   origin: string;
   destination: string;
@@ -26,6 +28,8 @@ export interface RideDetail {
   id: string;
   driverId: string;
   carModel: string;
+  /** Klucz z INTERIORS — z niego wynika liczba miejsc i kształt schematu. */
+  interior: string;
   seatCount: number;
   origin: string;
   destination: string;
@@ -51,7 +55,8 @@ export const getRide = (id: string) => api<RideDetail>(`/rides/${id}`);
 
 export const createRide = (data: {
   carModel: string;
-  seatCount: number;
+  /** Liczbę miejsc wylicza API z wnętrza — nie przesyłamy jej. */
+  interior: string;
   origin: string;
   destination: string;
   departureAt: string;

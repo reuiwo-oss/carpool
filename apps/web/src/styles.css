@@ -466,3 +466,6 @@ textarea.input { min-height: 72px; resize: vertical; line-height: 1.4; }
   border: 1.5px dashed var(--color-accent);
   background: var(--color-accent-100);
 }
+
+/* Bagażnik — na razie tylko placeholder, więc obrys przerywany i bez wypełnienia. */
+.legend .sw-trunk { border: 1px dashed var(--color-neutral-500); }

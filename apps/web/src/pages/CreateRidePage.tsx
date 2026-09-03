@@ -1,15 +1,16 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { generateSeatLayout } from '@carpool/shared';
+import {
+  DEFAULT_INTERIOR,
+  INTERIORS,
+  SHIPPED_INTERIORS,
+  seatLayoutFor,
+} from '@carpool/shared';
 import { createRide } from '../features/rides/ridesApi';
 import { useToast } from '../components/ToastContext';
 import SeatMap from '../features/seat-picker/SeatMap';
-import { MinusIcon, PlusIcon } from '../components/icons';
 import { BackButton, PrimaryButton } from '../components/ui';
 import { toDatetimeLocal } from '../lib/format';
-
-const MIN_SEATS = 1;
-const MAX_SEATS = 7;
 
 /** Domyślny odjazd: jutro rano — najczęstszy przypadek, a pole i tak jest edytowalne. */
 function defaultDeparture() {
@@ -18,6 +19,8 @@ function defaultDeparture() {
   d.setHours(8, 0, 0, 0);
   return toDatetimeLocal(d);
 }
+
+const INTERIOR_KEYS = Object.keys(INTERIORS);
 
 export default function CreateRidePage() {
   const navigate = useNavigate();
@@ -30,16 +33,14 @@ export default function CreateRidePage() {
     destination: params.get('to') ?? '',
     departureAt: defaultDeparture(),
     carModel: '',
-    seatCount: 4,
+    interior: DEFAULT_INTERIOR,
   });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
   // Podgląd tego, co zobaczy pasażer — ten sam generator co po stronie API.
-  const previewSeats = useMemo(() => generateSeatLayout(form.seatCount), [form.seatCount]);
-
-  const setSeats = (n: number) =>
-    setForm((f) => ({ ...f, seatCount: Math.min(MAX_SEATS, Math.max(MIN_SEATS, n)) }));
+  const previewSeats = useMemo(() => seatLayoutFor(form.interior), [form.interior]);
+  const seatCount = INTERIORS[form.interior].slots.length;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,36 +95,47 @@ export default function CreateRidePage() {
               onChange={(e) => setForm({ ...form, carModel: e.target.value })} />
           </div>
 
+          {/*
+            Typ auta zastąpił stepper — liczba miejsc wynika z wnętrza.
+            W tej fazie wdrożone jest tylko Kombi; SUV i pickup są widoczne,
+            ale wyłączone, żeby było jasne, co dojdzie później.
+          */}
           <div className="field">
-            <label id="seats-label">Miejsca dla pasażerów</label>
-            <div style={{ display: 'grid', gridTemplateColumns: '46px 1fr 46px', gap: 10, alignItems: 'center' }}>
-              <button type="button" className="btn btn-secondary" style={{ height: 46, padding: 0 }}
-                onClick={() => setSeats(form.seatCount - 1)}
-                disabled={form.seatCount <= MIN_SEATS} aria-label="Mniej miejsc">
-                <MinusIcon size={18} />
-              </button>
-              <div aria-live="polite" aria-labelledby="seats-label" style={{
-                textAlign: 'center', fontFamily: 'var(--font-heading)',
-                fontWeight: 600, fontSize: 30, lineHeight: 1,
-              }}>
-                {form.seatCount}
-              </div>
-              <button type="button" className="btn btn-secondary" style={{ height: 46, padding: 0 }}
-                onClick={() => setSeats(form.seatCount + 1)}
-                disabled={form.seatCount >= MAX_SEATS} aria-label="Więcej miejsc">
-                <PlusIcon size={18} />
-              </button>
+            <label id="interior-label">Typ auta</label>
+            <div role="radiogroup" aria-labelledby="interior-label"
+              style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
+              {INTERIOR_KEYS.map((key) => {
+                const it = INTERIORS[key];
+                const selected = form.interior === key;
+                const shipped = SHIPPED_INTERIORS.includes(key);
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    className={`btn ${selected ? 'btn-primary' : 'btn-secondary'}`}
+                    disabled={!shipped}
+                    title={shipped ? undefined : 'Wkrótce'}
+                    onClick={() => setForm({ ...form, interior: key })}
+                    style={{ minHeight: 46, flexDirection: 'column', gap: 1, padding: '6px 4px' }}
+                  >
+                    <span>{it.label}</span>
+                    <span style={{ fontSize: 11, opacity: 0.75, fontWeight: 400 }}>{it.desc}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', margin: '22px 0 2px' }}>
           <h2 style={{ fontSize: 20, margin: 0 }}>Tak zobaczą to pasażerowie</h2>
-          <span style={{ fontSize: 12, color: 'var(--color-neutral-600)' }}>{form.seatCount} + kierowca</span>
+          <span style={{ fontSize: 12, color: 'var(--color-neutral-600)' }}>{seatCount} + kierowca</span>
         </div>
 
         <div style={{ padding: '4px 40px 0' }}>
-          <SeatMap seats={previewSeats} />
+          <SeatMap seats={previewSeats} interior={form.interior} backdrop="none" />
         </div>
 
         <PrimaryButton type="submit" disabled={busy} style={{ marginTop: 20 }}>

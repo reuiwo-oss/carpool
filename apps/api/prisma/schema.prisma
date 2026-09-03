@@ -48,7 +48,10 @@ model Ride {
   driver        User           @relation("DriverRides", fields: [driverId], references: [id])
   driverId      String
   carModel      String
-  seatCount     Int // miejsca pasażerskie
+  /// Wnętrze auta (INTERIORS w pakiecie shared). String, nie enum —
+  /// kolejne warianty dochodzą bez migracji.
+  interior      String         @default("sedan")
+  seatCount     Int // miejsca pasażerskie — wynika z wnętrza
   origin        String
   destination   String
   departureAt   DateTime

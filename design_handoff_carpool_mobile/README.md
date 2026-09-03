@@ -87,6 +87,7 @@ Body scroll `padding 6px 20px 40px`:
 - Time row margin-top 6: heading 30px "08:30" + 14px neutral-700 "odjazd".
 - Driver row: margin `18px 0 6px`, padding `12px 0`, top+bottom 1px divider: 44 avatar, name (weight 500) over car (13px neutral-700), right `.tag` "N wolne z M" (accent, or neutral when 0).
 - Section head margin `16px 0 4px`: H2 20px "Wybierz miejsce" (passenger) / "Kto gdzie siedzi" (own ride, driver) + 12px neutral-600 car model on the right.
+- Legend (below the map) has five items: wolne · zajęte · moje · kierowca · bagażnik — wkrótce.
 - Seat map (see below), `padding 4px 6px 0`, max-width 330 centered.
 - Legend: centered row, gap 16, 11px neutral-700, 12×12 swatches: outlined accent "wolne"; hatched neutral-400 "zajęte"; filled accent "moje"; filled neutral-900 "kierowca".
 - Under the map, exactly one of:
@@ -97,9 +98,9 @@ Body scroll `padding 6px 20px 40px`:
 
 ### 6. Publikacja (`/rides/new`, driver only)
 Ghost back "Wróć". Body `padding 4px 20px 40px`: H1 "Nowy przejazd" 32px margin-bottom 18.
-- Fields gap 12: grid 2-col gap 10 "Skąd"/"Dokąd" (placeholders Kraków/Zakopane); "Odjazd" `datetime-local`; "Model auta" (placeholder "np. Škoda Octavia"); "Miejsca dla pasażerów" stepper: grid `46px 1fr 46px` gap 10 — `.btn-secondary` 46×46 minus, heading 30px count, plus. Range 1–7.
+- Fields gap 12: grid 2-col gap 10 "Skąd"/"Dokąd" (placeholders Kraków/Zakopane); "Odjazd" `datetime-local`; "Model auta" (placeholder "np. Škoda Octavia"); "Typ auta" — 3 equal `.btn` cells (min-height 46, two-line: name + 11px description), active `.btn-primary`. Ships with Kombi 5-osobowe only selected/enabled; SUV and Pickup can be hidden or disabled until their phase. Seat count derives from the interior (no stepper).
 - Section head margin `22px 0 2px`: H2 20px "Tak zobaczą to pasażerowie" + 12px neutral-600 "{n} + kierowca".
-- Live seat map of `generateSeats(n)` with all FREE, `padding 4px 40px 0`.
+- Live seat map for the chosen interior, all FREE, no backdrop, `padding 4px 40px 0`.
 - Primary blueprint block button margin-top 20 "Opublikuj przejazd" → `createRide` → navigate to `/rides/:id`, toast "Przejazd opublikowany."
 
 ### 7. Moje (`/mine`)
@@ -112,17 +113,23 @@ Header H1 30px "Moje rezerwacje" (passenger) / "Moje przejazdy" (driver) + avata
 - Needs a `GET /me/bookings` (or filter rides by `bookings[].passengerId === me.id`) and `GET /me/rides` (rides where `driverId === me.id`).
 
 ## Seat map component (replace `SeatMap.tsx`)
-SVG, `viewBox 0 0 W H`, W = 3·100 + 2·26 = 352, H = rows·100 + 52 + 62; `width:100%`, max-width 330 (92 for `mini`). Grid positions from `seat-layout.ts` (`x` 0–2, `y` 0–2; driver at 0,0). Cell 100, top pad 26, hood 62.
-- Corner registration crosses: 12px `+` at the four SVG corners, `var(--color-neutral-500)` 1px.
-- Body: rounded-top/bottom rectangle path, `stroke var(--color-accent-700)` 1.5, no fill. Windshield and rear window: dashed arcs (`4 4`, 1px). Four wheels: 10×44 rects, stroke neutral-500 1.2, fill bg, straddling the body sides.
-- "PRZÓD" label at top center: 10px letter-spacing 2, neutral-600 (hidden in `mini`).
-- Seat = headrest rect 72×16 above a seat rect 64×50 (both centred on cell, seat centre `cy = 26+62+y·100+44`), stroke 1.5:
-  - FREE: fill bg, stroke `var(--color-accent)`, `+` glyph in accent-700, label below (11px, seat label).
-  - SELECTED (first tap): fill `var(--color-accent-200)`, stroke 2, text "POTWIERDŹ" 13px heading 600 accent-700; pulsing dashed ring 88×84 (`5 4`, stroke-opacity 1→.25→1, 1.2 s ease-in-out infinite).
-  - TAKEN: fill `url(#hatch)` — 45° hairlines 5px apart neutral-400 1.2 — stroke neutral-400, label "Zajęte" neutral-600. Driver's own ride view (`showNames`): white 32×22 box with passenger initials, label = passenger name.
-  - MINE: fill + stroke `var(--color-accent)`, white check, label "Twoje".
-  - DRIVER: fill + stroke `var(--color-neutral-900)`, white steering-wheel glyph, label "Kierowca" (or driver name for own ride).
-- Only FREE seats are clickable (`role="button"`, `aria-label="{label}: free"`), passenger role only; full cell is the hit area.
+**Reference implementation: `prototype/seat-map.js`** — plain JS, `render(React, seats, opts)` returns the full SVG. Port it 1:1 to a React component (`SeatMap.tsx`); the geometry, colors and glyphs there are final. Options review with all variants: `prototype/Carpool - schemat auta.dc.html`.
+
+Decisions: interior **Kombi 5-osobowe** (`sedan`: driver + front-right + rear-left/middle/right, large trunk) is the default and the only one shipped now; backdrop **Mapa i szlak** (`map`). SUV / pickup interiors and the other backdrops exist in `seat-map.js` (`INTERIORS`, `BACKDROPS`) for later phases — keep the data model open (`ride.interior`, string).
+
+Geometry (viewBox units): cell 100 wide, row 112 tall, pad 26 (+26 margin when a backdrop is drawn), hood 60. Rows are centred (a 2-seat row sits at ±50 from centre). Body: rounded-top/bottom outline, `stroke var(--color-accent-700)` 1.5, **fill `var(--color-bg)`** so the backdrop is only ever outside the car. Dashed windshield and rear-window arcs, four 10×44 wheel rects (neutral-500), "+" registration crosses at the four SVG corners (neutral-500), "PRZÓD" 9.5px letter-spacing 2 neutral-600. Mini variant (92px, used on cards): no labels, no backdrop, no trunk contents.
+
+Seat = top-down chair: headrest 32×13 rx 6.5; backrest 62×26 with 8px top corners; cushion 60×40 with 11px bottom corners; two bolster lines at ±20 (stroke, 30% opacity). Stroke 1.5. Status below the seat, 11px:
+- FREE: fill bg, stroke accent, "+" glyph accent-700, label = seat name.
+- SELECTED: fill accent-200, stroke 2, "POTWIERDŹ" 12px heading 600 accent-700, dashed rounded ring 84×98 rx 12 pulsing (stroke-opacity 1→.25, 1.2s).
+- TAKEN: paper under-rect then 45° hatch (neutral-400, 5px pitch), stroke neutral-400, label "Zajęte" neutral-600; on the driver's own ride a 30×20 white box with passenger initials and the name as label.
+- MINE: fill+stroke accent, white check, label "Twoje".
+- DRIVER: fill+stroke neutral-900, white steering-wheel glyph, label "Kierowca" (name on own ride).
+Only FREE seats are interactive (`role="button"`), passenger role only; hit area is the whole 96×100 cell.
+
+Trunk ("Bagażnik" — placeholder for a later phase): after the last row, a 1px neutral-300 separator, then a dashed (4 3) neutral-400 rectangle inset 12px, containing a backpack outline glyph (neutral-500) and "BAGAŻNIK" 9.5px letter-spacing 2 neutral-600. Render it read-only now; it will later hold luggage slots. Add a legend item "bagażnik — wkrótce" (12×12 dashed swatch).
+
+Backdrop `map` (outside the car only, all tints from the light accent steps so seats keep contrast): full-bleed `accent-100` at 50%; 32px grid neutral-300 at 55%; three forest blobs (accent-200 at 55% + −45° hairline hatch accent-300 + accent-300 outline) with small two-tier conifer glyphs (accent-700 0.9px, accent-100 fill); a lake in the top-right (accent-200 80%); two contour strokes accent-300; the trail — dashed 4/4 neutral-600 1.4px from a start circle bottom-left, up the left side, across the top, to a summit triangle (accent-100 fill, neutral-600 stroke) on the right. Clip to the SVG box (`overflow:hidden`).
 
 ## Interactions & state
 - **Two-tap booking:** tap FREE seat → `selectedSeatId`; tapping the same seat again → `bookSeat(rideId, seatId)` → toast "Miejsce zarezerwowane: {label}."; tapping another FREE seat moves selection; "Anuluj" clears. One booking per user per ride — if the user already has a seat, taps toast "Masz już miejsce w tym aucie." Optimistic update, revert on API error with the error text in a toast.
@@ -140,10 +147,15 @@ All in `prototype/_ds/.../styles.css`. Used here: `--color-bg`, `--color-text`, 
 - No photos yet. When available, wrap in `.duotone` (design-system rule), square, hairline frame.
 
 ## Files
-- `prototype/Carpool Mobile.dc.html` — the clickable prototype (screens + all logic incl. seat map SVG in `seatMap()`).
+- `prototype/Carpool Mobile.dc.html` — the clickable prototype (screens + flow logic).
+- `prototype/seat-map.js` — the seat-map renderer (seats, interiors, trunk, backdrops). Port this.
+- `prototype/Carpool - schemat auta.dc.html` — options review: seat states, 3 interiors, 3 backdrops; chosen: 1a Kombi + 1f Mapa i szlak.
 - `prototype/_ds/industry-*/styles.css` — the design system stylesheet to port.
 - `design-system-readme.md` — design system guide.
 - `prototype/ios-frame.jsx`, `prototype/support.js`, `prototype/_ds/.../_ds_bundle.js` — prototype runtime only, do not port.
+
+## Changelog
+- v2: realistic seats, trunk placeholder, interior variants (Kombi default), map backdrop; car-type picker replaces seat stepper.
 
 ## Screenshots
 `screenshots/` — full prototype canvas (left rail = prototype controls, not part of the app):
@@ -158,3 +170,8 @@ All in `prototype/_ds/.../styles.css`. Used here: `--color-bg`, `--color-text`, 
 - `09-mine-driver.png`
 - `10-detail-driver-own-ride.png`
 - `11-community-empty.png`
+- `12-seat-map-options.png` — seat states, interiors, backdrops (chosen 1a + 1f)
+- `13-v2-detail-passenger.png`
+- `14-v2-detail-seat-selected.png`
+- `15-v2-create-driver.png`
+- `16-v2-mine-driver.png`

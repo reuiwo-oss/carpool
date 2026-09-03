@@ -10,6 +10,7 @@
 <helmet>
 <link rel="stylesheet" href="_ds/industry-451fb7f8-118a-4180-b2aa-7a0fc646e371/styles.css">
 <script src="_ds/industry-451fb7f8-118a-4180-b2aa-7a0fc646e371/_ds_bundle.js"></script>
+<script src="./seat-map.js"></script>
 <style>
 body{margin:0;background:var(--color-neutral-200);font-family:var(--font-body);color:var(--color-text)}
 a{color:var(--color-accent-700)}a:hover{color:var(--color-accent-900)}
@@ -196,6 +197,7 @@ input[type=date]::-webkit-calendar-picker-indicator,input[type=datetime-local]::
       <span style="display:inline-flex;align-items:center;gap:5px"><i style="width:12px;height:12px;border:1px solid var(--color-neutral-400);display:inline-block;background:repeating-linear-gradient(135deg,var(--color-neutral-400) 0 1px,transparent 1px 4px)"></i>zajęte</span>
       <span style="display:inline-flex;align-items:center;gap:5px"><i style="width:12px;height:12px;background:var(--color-accent);display:inline-block"></i>moje</span>
       <span style="display:inline-flex;align-items:center;gap:5px"><i style="width:12px;height:12px;background:var(--color-neutral-900);display:inline-block"></i>kierowca</span>
+      <span style="display:inline-flex;align-items:center;gap:5px"><i style="width:12px;height:12px;border:1px dashed var(--color-neutral-500);display:inline-block"></i>bagażnik — wkrótce</span>
     </div>
     <sc-if value="{{ showSeatHint }}" hint-placeholder-val="{{ true }}">
       <div style="text-align:center;font-size:14px;color:var(--color-neutral-700);padding:4px 0 8px">Dotknij wolny fotel, żeby go wybrać.</div>
@@ -243,15 +245,15 @@ input[type=date]::-webkit-calendar-picker-indicator,input[type=datetime-local]::
       </div>
       <div class="field"><label>Odjazd</label><input class="input" type="datetime-local" value="{{ f.when }}" onChange="{{ setFWhen }}" style="min-height:46px;font-size:16px" /></div>
       <div class="field"><label>Model auta</label><input class="input" value="{{ f.car }}" onChange="{{ setFCar }}" placeholder="np. Škoda Octavia" style="min-height:46px;font-size:16px" /></div>
-      <div class="field"><label>Miejsca dla pasażerów</label>
-        <div style="display:grid;grid-template-columns:46px 1fr 46px;gap:10px;align-items:center">
-          <button class="btn btn-secondary" onClick="{{ seatsMinus }}" style="height:46px;padding:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 12h14"></path></svg></button>
-          <div style="text-align:center;font-family:var(--font-heading);font-weight:600;font-size:30px;line-height:1">{{ f.seats }}</div>
-          <button class="btn btn-secondary" onClick="{{ seatsPlus }}" style="height:46px;padding:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button>
+      <div class="field"><label>Typ auta</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+          <sc-for list="{{ interiors }}" as="it" hint-placeholder-count="3">
+            <button class="btn {{ it.btn }}" onClick="{{ it.pick }}" style="min-height:46px;flex-direction:column;gap:1px;padding:6px 4px"><span>{{ it.label }}</span><span style="font-size:11px;opacity:.75;font-weight:400">{{ it.desc }}</span></button>
+          </sc-for>
         </div>
       </div>
     </div>
-    <div style="display:flex;justify-content:space-between;align-items:baseline;margin:22px 0 2px"><h2 style="font-size:20px;margin:0">Tak zobaczą to pasażerowie</h2><span style="font-size:12px;color:var(--color-neutral-600)">{{ f.seats }} + kierowca</span></div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin:22px 0 2px"><h2 style="font-size:20px;margin:0">Tak zobaczą to pasażerowie</h2><span style="font-size:12px;color:var(--color-neutral-600)">{{ fSeatCount }} + kierowca</span></div>
     <div style="padding:4px 40px 0">{{ createMap }}</div>
     <button class="btn btn-primary btn-block blueprint" onClick="{{ publish }}" style="min-height:50px;font-size:16px;margin-top:20px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>Opublikuj przejazd</button>
   </div>
@@ -332,7 +334,7 @@ input[type=date]::-webkit-calendar-picker-indicator,input[type=datetime-local]::
 </x-import>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;role&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;PASSENGER&quot;,&quot;DRIVER&quot;],&quot;default&quot;:&quot;PASSENGER&quot;,&quot;tsType&quot;:&quot;'PASSENGER' | 'DRIVER'&quot;,&quot;section&quot;:&quot;Prototyp&quot;},&quot;startScreen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;login&quot;,&quot;register&quot;,&quot;search&quot;,&quot;detail&quot;,&quot;create&quot;,&quot;mine&quot;,&quot;feed&quot;],&quot;default&quot;:&quot;login&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Prototyp&quot;}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;role&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;PASSENGER&quot;,&quot;DRIVER&quot;],&quot;default&quot;:&quot;PASSENGER&quot;,&quot;tsType&quot;:&quot;'PASSENGER' | 'DRIVER'&quot;,&quot;section&quot;:&quot;Prototyp&quot;},&quot;backdrop&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;none&quot;,&quot;contours&quot;,&quot;ridge&quot;,&quot;map&quot;],&quot;default&quot;:&quot;map&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Schemat auta&quot;},&quot;startScreen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;login&quot;,&quot;register&quot;,&quot;search&quot;,&quot;detail&quot;,&quot;create&quot;,&quot;mine&quot;,&quot;feed&quot;],&quot;default&quot;:&quot;login&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Prototyp&quot;}}">
 const SLOTS = [
   { id: 'front-right', label: 'Przód prawe', x: 2, y: 0 },
   { id: 'rear-left', label: 'Tył lewe', x: 0, y: 1 },
@@ -344,11 +346,11 @@ const SLOTS = [
 ];
 const USERS = { PASSENGER: { id: 'u1', name: 'Kasia' }, DRIVER: { id: 'u9', name: 'Marek' } };
 const RIDES = [
-  { id: 'r1', from: 'Kraków', to: 'Zakopane', dayKey: 'sat', day: 'sob., 12 września', dayShort: 'sob., 12 wrz', time: '08:30', car: 'Škoda Octavia', driver: 'Marta', driverId: 'u2', seatCount: 4, taken: { 'front-right': 'Jakub', 'rear-middle': 'Ola' } },
-  { id: 'r2', from: 'Kraków', to: 'Zakopane', dayKey: 'sat', day: 'sob., 12 września', dayShort: 'sob., 12 wrz', time: '14:00', car: 'VW Golf', driver: 'Paweł', driverId: 'u3', seatCount: 3, taken: { 'rear-left': 'Ania', 'rear-right': 'Piotr' } },
-  { id: 'r3', from: 'Warszawa', to: 'Gdańsk', dayKey: 'fri', day: 'pt., 11 września', dayShort: 'pt., 11 wrz', time: '17:15', car: 'Toyota Corolla', driver: 'Marek', driverId: 'u9', seatCount: 4, taken: { 'rear-left': 'Bartek' } },
-  { id: 'r4', from: 'Wrocław', to: 'Karpacz', dayKey: 'sat', day: 'sob., 12 września', dayShort: 'sob., 12 wrz', time: '07:00', car: 'Dacia Duster', driver: 'Tomek', driverId: 'u4', seatCount: 4, taken: {} },
-  { id: 'r5', from: 'Kraków', to: 'Wrocław', dayKey: 'sun', day: 'nd., 13 września', dayShort: 'nd., 13 wrz', time: '18:00', car: 'Toyota Corolla', driver: 'Marek', driverId: 'u9', seatCount: 2, taken: { 'front-right': 'Zosia' } },
+  { id: 'r1', from: 'Kraków', to: 'Zakopane', dayKey: 'sat', day: 'sob., 12 września', dayShort: 'sob., 12 wrz', time: '08:30', car: 'Škoda Octavia Kombi', driver: 'Marta', driverId: 'u2', interior: 'sedan', taken: { 'front-right': 'Jakub', 'rear-middle': 'Ola' } },
+  { id: 'r2', from: 'Kraków', to: 'Zakopane', dayKey: 'sat', day: 'sob., 12 września', dayShort: 'sob., 12 wrz', time: '14:00', car: 'VW Golf', driver: 'Paweł', driverId: 'u3', interior: 'sedan', taken: { 'rear-left': 'Ania', 'rear-right': 'Piotr' } },
+  { id: 'r3', from: 'Warszawa', to: 'Gdańsk', dayKey: 'fri', day: 'pt., 11 września', dayShort: 'pt., 11 wrz', time: '17:15', car: 'Škoda Superb Kombi', driver: 'Marek', driverId: 'u9', interior: 'sedan', taken: { 'rear-left': 'Bartek' } },
+  { id: 'r4', from: 'Wrocław', to: 'Karpacz', dayKey: 'sat', day: 'sob., 12 września', dayShort: 'sob., 12 wrz', time: '07:00', car: 'Volvo V60', driver: 'Tomek', driverId: 'u4', interior: 'sedan', taken: {} },
+  { id: 'r5', from: 'Kraków', to: 'Wrocław', dayKey: 'sun', day: 'nd., 13 września', dayShort: 'nd., 13 wrz', time: '18:00', car: 'Škoda Superb Kombi', driver: 'Marek', driverId: 'u9', interior: 'sedan', taken: { 'front-right': 'Zosia' } },
 ];
 const initials = (n) => n.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
 const PL_MONTHS = ['stycznia','lutego','marca','kwietnia','maja','czerwca','lipca','sierpnia','września','października','listopada','grudnia'];
@@ -359,19 +361,21 @@ const h = React.createElement;
 class Component extends DCLogic {
   state = {
     screen: 'login', back: 'search', role: null, regRole: 'PASSENGER', rideId: 'r1', sel: null, toast: '',
-    q: { from: '', to: '', day: 'all' }, f: { from: '', to: '', when: '2026-09-12T08:30', car: '', seats: 4 },
+    q: { from: '', to: '', day: 'all' }, f: { from: '', to: '', when: '2026-09-12T08:30', car: '', interior: 'sedan' },
     rides: RIDES, bookings: [{ rideId: 'r3', seatId: 'rear-right', who: 'Kasia' }], alerts: [],
   };
   role() { return this.state.role ?? this.props.role ?? 'PASSENGER'; }
   me() { return USERS[this.role()]; }
-  componentDidMount() { const s = this.props.startScreen; if (s && s !== 'login') this.setState({ screen: s }); }
+  componentDidMount() { const s = this.props.startScreen; if (s && s !== 'login') this.setState({ screen: s }); this._poll = setInterval(() => { if (window.CarpoolSeatMap) { clearInterval(this._poll); this.forceUpdate(); } }, 50); }
+  componentWillUnmount() { clearInterval(this._poll); clearTimeout(this._t); }
   go(screen, extra = {}) { this.setState((st) => ({ screen, back: ['search','feed','mine'].includes(st.screen) ? st.screen : st.back, sel: null, ...extra })); }
   say(toast) { clearTimeout(this._t); this.setState({ toast }); this._t = setTimeout(() => this.setState({ toast: '' }), 2600); }
   seatsOf(ride) {
     const bk = this.state.bookings.filter((b) => b.rideId === ride.id);
     const isP = this.role() === 'PASSENGER';
+    const M = window.CarpoolSeatMap; const ids = M ? M.INTERIORS[ride.interior || 'sedan'].slots : [];
     return [{ id: 'driver', label: 'Kierowca', x: 0, y: 0, status: 'DRIVER', who: ride.driver }].concat(
-      SLOTS.slice(0, ride.seatCount).map((s) => { const b = bk.find((x) => x.seatId === s.id);
+      ids.map((id) => SLOTS.find((x) => x.id === id)).map((s) => { const b = bk.find((x) => x.seatId === s.id);
         return { ...s, who: ride.taken[s.id] || (b ? b.who : null), status: b ? (isP ? 'MINE' : 'TAKEN') : ride.taken[s.id] ? 'TAKEN' : 'FREE' }; }));
   }
   freeCount(ride) { return this.seatsOf(ride).filter((s) => s.status === 'FREE').length; }
@@ -383,48 +387,9 @@ class Component extends DCLogic {
     else this.setState({ sel: seat.id });
   }
   cancelBooking(rideId) { this.setState((st) => ({ bookings: st.bookings.filter((b) => b.rideId !== rideId) })); this.say('Rezerwacja anulowana.'); }
-  seatMap(seats, { mini = false, sel = null, showNames = false, onTap = null } = {}) {
-    const CELL = 100, PAD = 26, HOOD = 62, rows = Math.max(...seats.map((s) => s.y)) + 1;
-    const W = 3 * CELL + 2 * PAD, H = rows * CELL + 2 * PAD + HOOD;
-    const accent = 'var(--color-accent)', ink = 'var(--color-neutral-900)', paper = 'var(--color-bg)', muted = 'var(--color-neutral-600)';
-    const cross = (x, y) => h('g', { key: `c${x}${y}`, stroke: 'var(--color-neutral-500)', strokeWidth: 1 }, h('line', { x1: x - 6, y1: y, x2: x + 6, y2: y }), h('line', { x1: x, y1: y - 6, x2: x, y2: y + 6 }));
-    const kids = [
-      h('defs', { key: 'd' }, h('pattern', { id: 'cpHatch', width: 5, height: 5, patternUnits: 'userSpaceOnUse', patternTransform: 'rotate(45)' }, h('line', { x1: 0, y1: 0, x2: 0, y2: 5, stroke: 'var(--color-neutral-400)', strokeWidth: 1.2 }))),
-      cross(7, 7), cross(W - 7, 7), cross(7, H - 7), cross(W - 7, H - 7),
-      // wheels
-      ...[[2, PAD + HOOD - 6], [W - 12, PAD + HOOD - 6], [2, H - PAD - 48], [W - 12, H - PAD - 48]].map(([x, y], i) => h('rect', { key: `w${i}`, x, y, width: 10, height: 44, fill: paper, stroke: 'var(--color-neutral-500)', strokeWidth: 1.2 })),
-      // body
-      h('path', { key: 'body', d: `M${PAD + 14} 14 H${W - PAD - 14} Q${W - 14} 14 ${W - 14} ${PAD + 30} V${H - 34} Q${W - 14} ${H - 14} ${W - 34} ${H - 14} H34 Q14 ${H - 14} 14 ${H - 34} V${PAD + 30} Q14 14 ${PAD + 14} 14 Z`, fill: 'none', stroke: 'var(--color-accent-700)', strokeWidth: 1.5 }),
-      // windshield
-      h('path', { key: 'ws', d: `M${PAD + 12} ${PAD + HOOD - 22} Q${W / 2} ${PAD + HOOD - 36} ${W - PAD - 12} ${PAD + HOOD - 22}`, fill: 'none', stroke: 'var(--color-accent-700)', strokeWidth: 1, strokeDasharray: '4 4' }),
-      // rear window
-      h('path', { key: 'rw', d: `M${PAD + 16} ${H - 26} Q${W / 2} ${H - 40} ${W - PAD - 16} ${H - 26}`, fill: 'none', stroke: 'var(--color-accent-700)', strokeWidth: 1, strokeDasharray: '4 4' }),
-    ];
-    if (!mini) kids.push(h('text', { key: 'front', x: W / 2, y: 36, textAnchor: 'middle', fontSize: 10, letterSpacing: 2, fill: muted, fontFamily: 'var(--font-body)' }, 'PRZÓD'));
-    seats.forEach((s) => {
-      const cx = PAD + s.x * CELL + CELL / 2, cy = PAD + HOOD + s.y * CELL + CELL / 2 - 6;
-      const isSel = sel === s.id, st = s.status;
-      const fill = st === 'DRIVER' ? ink : st === 'MINE' ? accent : st === 'TAKEN' ? 'url(#cpHatch)' : isSel ? 'var(--color-accent-200)' : paper;
-      const stroke = st === 'DRIVER' ? ink : st === 'MINE' || isSel ? accent : st === 'TAKEN' ? 'var(--color-neutral-400)' : accent;
-      const sw = isSel ? 2 : 1.5;
-      const clickable = st === 'FREE' && !!onTap;
-      const parts = [
-        h('rect', { key: 'hit', x: cx - CELL / 2 + 4, y: cy - CELL / 2 + 2, width: CELL - 8, height: CELL - 4, fill: 'transparent' }),
-        h('rect', { key: 'back', x: cx - 36, y: cy - 36, width: 72, height: 16, fill, stroke, strokeWidth: sw }),
-        h('rect', { key: 'seat', x: cx - 32, y: cy - 20, width: 64, height: 50, fill, stroke, strokeWidth: sw }),
-      ];
-      if (isSel) parts.push(h('rect', { key: 'ring', x: cx - 44, y: cy - 44, width: 88, height: 84, fill: 'none', stroke: accent, strokeWidth: 1.5, strokeDasharray: '5 4', style: { animation: 'cpPulse 1.2s ease-in-out infinite' } }));
-      const glyphC = st === 'DRIVER' || st === 'MINE' ? paper : st === 'TAKEN' ? 'var(--color-neutral-600)' : 'var(--color-accent-700)';
-      if (st === 'DRIVER') parts.push(h('g', { key: 'g', stroke: glyphC, strokeWidth: 1.5, fill: 'none', transform: `translate(${cx} ${cy + 5})` }, h('circle', { r: 11 }), h('circle', { r: 3 }), h('line', { x1: -11, y1: 0, x2: -3, y2: 0 }), h('line', { x1: 3, y1: 0, x2: 11, y2: 0 }), h('line', { x1: 0, y1: 3, x2: 0, y2: 11 })));
-      else if (st === 'MINE') parts.push(h('path', { key: 'g', d: `M${cx - 9} ${cy + 5} l6 6 l12 -12`, stroke: glyphC, strokeWidth: 2, fill: 'none', strokeLinecap: 'round', strokeLinejoin: 'round' }));
-      else if (st === 'TAKEN' && showNames && s.who) parts.push(h('rect', { key: 'nb', x: cx - 16, y: cy - 6, width: 32, height: 22, fill: paper, stroke: 'var(--color-neutral-400)', strokeWidth: 1 }), h('text', { key: 'g', x: cx, y: cy + 10, textAnchor: 'middle', fontSize: 13, fontWeight: 600, fill: 'var(--color-neutral-800)', fontFamily: 'var(--font-heading)' }, initials(s.who)));
-      else if (st === 'FREE' && isSel) parts.push(h('text', { key: 'g', x: cx, y: cy + 10, textAnchor: 'middle', fontSize: 13, fontWeight: 600, letterSpacing: 0.5, fill: glyphC, fontFamily: 'var(--font-heading)' }, 'POTWIERDŹ'));
-      else if (st === 'FREE') parts.push(h('g', { key: 'g', stroke: glyphC, strokeWidth: 1.5 }, h('line', { x1: cx - 7, y1: cy + 5, x2: cx + 7, y2: cy + 5 }), h('line', { x1: cx, y1: cy - 2, x2: cx, y2: cy + 12 })));
-      if (!mini) parts.push(h('text', { key: 'l', x: cx, y: cy + 46, textAnchor: 'middle', fontSize: 11, fill: st === 'TAKEN' ? muted : 'var(--color-text)', fontFamily: 'var(--font-body)' },
-        st === 'DRIVER' ? (showNames ? s.who : 'Kierowca') : st === 'TAKEN' ? (showNames ? s.who : 'Zajęte') : st === 'MINE' ? 'Twoje' : s.label));
-      kids.push(h('g', { key: s.id, onClick: clickable ? () => onTap(s) : undefined, style: { cursor: clickable ? 'pointer' : 'default' }, role: clickable ? 'button' : undefined, 'aria-label': `${s.label}: ${st.toLowerCase()}` }, ...parts));
-    });
-    return h('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%', style: { display: 'block', maxWidth: mini ? 92 : 330, margin: '0 auto', overflow: 'visible' }, role: 'group', 'aria-label': 'Schemat miejsc w samochodzie' }, ...kids);
+  seatMap(seats, opts = {}) {
+    const M = window.CarpoolSeatMap; if (!M || !seats.length) return null;
+    return M.render(React, seats, { backdrop: this.props.backdrop ?? 'map', ...opts });
   }
   fmtWhen(v) { const d = new Date(v); if (isNaN(d)) return { day: '—', dayShort: '—', time: '—', dayKey: 'all' }; return { day: `${PL_WD[d.getDay()]}, ${d.getDate()} ${PL_MONTHS[d.getMonth()]}`, dayShort: `${PL_WD[d.getDay()]}, ${d.getDate()} ${PL_MONTHS[d.getMonth()].slice(0, 3)}`, time: `${pad(d.getHours())}:${pad(d.getMinutes())}`, dayKey: ['sun','mon','tue','wed','thu','fri','sat'][d.getDay()] }; }
   renderVals() {
@@ -439,7 +404,7 @@ class Component extends DCLogic {
     const isOwn = ride.driverId === me.id;
     const showTabs = ['search','feed','mine'].includes(scr);
     const tabC = (k) => (scr === k ? 'var(--color-accent-700)' : 'var(--color-neutral-600)');
-    const mk = (r) => ({ ...r, mini: this.seatMap(this.seatsOf(r), { mini: true }), open: () => this.go('detail', { rideId: r.id }) });
+    const mk = (r) => ({ ...r, mini: this.seatMap(this.seatsOf(r), { interior: r.interior, mini: true, hatchId: 'hm' + r.id }), open: () => this.go('detail', { rideId: r.id }) });
     const myBookings = st.bookings.filter((b) => b.who === me.name).map((b) => { const r = st.rides.find((x) => x.id === b.rideId); return { ...mk(r), seatLabel: SLOTS.find((s) => s.id === b.seatId).label, cancel: () => this.cancelBooking(b.rideId) }; });
     const myRides = st.rides.filter((r) => r.driverId === me.id).map((r) => { const ss = this.seatsOf(r).filter((s) => s.status !== 'DRIVER'), tk = ss.filter((s) => s.status !== 'FREE'); return { ...mk(r), occupancy: `${tk.length} z ${ss.length}`, names: tk.length ? tk.map((s) => s.who).join(', ') : 'Jeszcze nikt — podziel się linkiem' }; });
     const qDesc = st.q.from || st.q.to ? `${st.q.from || '…'} → ${st.q.to || '…'}` : 'tej trasie';
@@ -468,22 +433,23 @@ class Component extends DCLogic {
       dayAllBtn: dayBtn('all'), dayFriBtn: dayBtn('fri'), daySatBtn: dayBtn('sat'), daySunBtn: dayBtn('sun'),
       setDayAll: () => this.setState({ q: { ...st.q, day: 'all' } }), setDayFri: () => this.setState({ q: { ...st.q, day: 'fri' } }), setDaySat: () => this.setState({ q: { ...st.q, day: 'sat' } }), setDaySun: () => this.setState({ q: { ...st.q, day: 'sun' } }),
       results, hasResults: results.length > 0, noResults: results.length === 0, resultsCount: `${results.length} ${results.length === 1 ? 'przejazd' : results.length < 5 ? 'przejazdy' : 'przejazdów'}`,
-      emptyMap: this.seatMap([{ id: 'driver', x: 0, y: 0, status: 'DRIVER' }, { id: 'a', label: '', x: 2, y: 0, status: 'FREE' }, { id: 'b', label: '', x: 0, y: 1, status: 'FREE' }, { id: 'c', label: '', x: 1, y: 1, status: 'FREE' }, { id: 'd', label: '', x: 2, y: 1, status: 'FREE' }], { mini: true }),
+      emptyMap: this.seatMap([{ id: 'driver', x: 0, y: 0, status: 'DRIVER' }].concat(SLOTS.slice(0, 4).map((s) => ({ ...s, status: 'FREE' }))), { mini: true, hatchId: 'he' }),
       emptyTitle: isP ? 'Nikt jeszcze nie jedzie' : 'Wolna trasa',
       emptyBody: isP ? `Na ${qDesc} nie ma jeszcze auta. Zostaw nam znać — powiemy, gdy ktoś opublikuje przejazd.` : `Na ${qDesc} nikt nie oferuje miejsc. Ty możesz być pierwszy.`,
       setAlert: () => this.say(`Powiadomimy cię o przejazdach: ${qDesc}.`),
       goCreateFromQ: () => { this.setState({ f: { ...st.f, from: st.q.from, to: st.q.to } }); this.go('create'); },
       clearQ: () => this.setState({ q: { from: '', to: '', day: 'all' } }),
-      ride: { ...ride, initials: initials(ride.driver), freeLabel: `${this.freeCount(ride)} wolne z ${ride.seatCount}`, freeTag: this.freeCount(ride) ? 'tag-accent' : 'tag-neutral' },
+      ride: { ...ride, initials: initials(ride.driver), freeLabel: `${this.freeCount(ride)} wolne z ${seats.length - 1}`, freeTag: this.freeCount(ride) ? 'tag-accent' : 'tag-neutral' },
       mapHeading: isOwn ? 'Kto gdzie siedzi' : 'Wybierz miejsce',
-      detailMap: this.seatMap(seats, { sel: st.sel, showNames: isOwn, onTap: isP ? (s) => this.tapSeat(s) : null }),
+      detailMap: this.seatMap(seats, { interior: ride.interior, sel: st.sel, showNames: isOwn, onTap: isP ? (s) => this.tapSeat(s) : null }),
       showSeatHint: isP && !mySeat && !st.sel && this.freeCount(ride) > 0, showConfirm: isP && !!selSeat, selLabel: selSeat ? selSeat.label : '', clearSel: () => this.setState({ sel: null }),
       showMine: !!mySeat, mineLabel: mySeat ? mySeat.label.toLowerCase() : '', cancelHere: () => this.cancelBooking(ride.id),
       showRoster: isD && roster.length > 0, roster,
       f: st.f, setFFrom: setF('from'), setFTo: setF('to'), setFWhen: setF('when'), setFCar: setF('car'),
-      seatsMinus: () => this.setState({ f: { ...st.f, seats: Math.max(1, st.f.seats - 1) } }), seatsPlus: () => this.setState({ f: { ...st.f, seats: Math.min(7, st.f.seats + 1) } }),
-      createMap: this.seatMap([{ id: 'driver', label: 'Kierowca', x: 0, y: 0, status: 'DRIVER', who: me.name }].concat(SLOTS.slice(0, st.f.seats).map((s) => ({ ...s, status: 'FREE' }))), {}),
-      publish: () => { const w = this.fmtWhen(st.f.when); const id = `r${Date.now()}`; const nr = { id, from: st.f.from || 'Kraków', to: st.f.to || 'Zakopane', ...w, car: st.f.car || 'Toyota Corolla', driver: me.name, driverId: me.id, seatCount: st.f.seats, taken: {} };
+      interiors: Object.entries((window.CarpoolSeatMap || { INTERIORS: {} }).INTERIORS).map(([k, v]) => ({ key: k, label: v.label, desc: v.desc, btn: st.f.interior === k ? 'btn-primary' : 'btn-secondary', pick: () => this.setState({ f: { ...st.f, interior: k } }) })),
+      fSeatCount: (window.CarpoolSeatMap ? window.CarpoolSeatMap.INTERIORS[st.f.interior].slots.length : 0),
+      createMap: this.seatMap([{ id: 'driver', label: 'Kierowca', x: 0, y: 0, status: 'DRIVER', who: me.name }].concat((window.CarpoolSeatMap ? window.CarpoolSeatMap.INTERIORS[st.f.interior].slots : []).map((id) => ({ ...SLOTS.find((x) => x.id === id), status: 'FREE' }))), { interior: st.f.interior, backdrop: 'none', hatchId: 'hc' }),
+      publish: () => { const w = this.fmtWhen(st.f.when); const id = `r${Date.now()}`; const nr = { id, from: st.f.from || 'Kraków', to: st.f.to || 'Zakopane', ...w, car: st.f.car || 'Škoda Superb Kombi', driver: me.name, driverId: me.id, interior: st.f.interior, taken: {} };
         this.setState({ rides: [...st.rides, nr], role: 'DRIVER', screen: 'detail', rideId: id, back: 'mine' }); this.say('Przejazd opublikowany.'); },
       mineHeading: isP ? 'Moje rezerwacje' : 'Moje przejazdy', tabMineLabel: isP ? 'Rezerwacje' : 'Moje przejazdy',
       myBookings, noBookings: myBookings.length === 0, myRides,

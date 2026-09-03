@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { generateSeatLayout, type BookingStatus, type Seat } from '@carpool/shared';
+import { seatLayoutFor, type BookingStatus, type Seat } from '@carpool/shared';
 import {
   cancelBooking,
   listMyBookings,
@@ -24,12 +24,12 @@ interface SeatOccupancy {
  * `mineSeatId` dostaje status zależny od tego, czy prośba jest już potwierdzona.
  */
 function seatsWithBookings(
-  seatCount: number,
+  interior: string,
   taken: SeatOccupancy[],
   mine?: { seatId: string; status: BookingStatus },
 ): Seat[] {
   const by = new Map(taken.map((t) => [t.seatId, t.status]));
-  return generateSeatLayout(seatCount).map((seat) => {
+  return seatLayoutFor(interior).map((seat) => {
     if (seat.status === 'DRIVER') return seat;
     if (mine && seat.id === mine.seatId) {
       return { ...seat, status: mine.status === 'ACCEPTED' ? ('MINE' as const) : ('PENDING' as const) };
@@ -100,7 +100,7 @@ export default function MinePage() {
           const when = formatWhen(b.ride.departureAt);
           const pending = b.status === 'PENDING';
           const seats = seatsWithBookings(
-            b.ride.seatCount,
+            b.ride.interior,
             b.ride.bookings ?? [],
             { seatId: b.seatId, status: b.status },
           );
@@ -121,7 +121,7 @@ export default function MinePage() {
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ width: 92, flex: 'none' }}>
-                  <SeatMap seats={seats} mini />
+                  <SeatMap seats={seats} interior={b.ride.interior} mini />
                 </div>
                 <div style={{ flex: 1 }}>
                   <div className="kicker">{pending ? 'Prośba o miejsce' : 'Twoje miejsce'}</div>
@@ -164,7 +164,7 @@ export default function MinePage() {
 
         {isDriver && rides?.map((r) => {
           const when = formatWhen(r.departureAt);
-          const seats = seatsWithBookings(r.seatCount, r.bookings);
+          const seats = seatsWithBookings(r.interior, r.bookings);
           const accepted = r.bookings.filter((b) => b.status === 'ACCEPTED');
           const waiting = r.bookings.filter((b) => b.status === 'PENDING');
           const names = accepted.map((x) => x.passenger.name).join(', ');
@@ -186,7 +186,7 @@ export default function MinePage() {
               <div style={{ fontSize: 13, color: 'var(--color-neutral-700)' }}>{when.day} · {r.carModel}</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%' }}>
                 <div style={{ width: 92, flex: 'none' }}>
-                  <SeatMap seats={seats} mini />
+                  <SeatMap seats={seats} interior={r.interior} mini />
                 </div>
                 <div style={{ flex: 1 }}>
                   <div className="kicker">Obsada</div>

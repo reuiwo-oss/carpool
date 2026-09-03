@@ -1,13 +1,16 @@
-import { IsDateString, IsInt, IsString, Max, Min } from 'class-validator';
+import { IsDateString, IsIn, IsString } from 'class-validator';
+import { SHIPPED_INTERIORS } from '@carpool/shared';
 
 export class CreateRideDto {
   @IsString()
   carModel!: string;
 
-  @IsInt()
-  @Min(1)
-  @Max(7)
-  seatCount!: number;
+  /**
+   * Wnętrze auta decyduje o liczbie miejsc — kierowca nie podaje jej wprost.
+   * Przyjmujemy tylko warianty wdrożone w tej fazie.
+   */
+  @IsIn(SHIPPED_INTERIORS)
+  interior!: string;
 
   @IsString()
   origin!: string;
