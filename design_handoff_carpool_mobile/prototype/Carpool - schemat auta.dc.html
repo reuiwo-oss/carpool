@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/industry-451fb7f8-118a-4180-b2aa-7a0fc646e371/styles.css">
+<script src="_ds/industry-451fb7f8-118a-4180-b2aa-7a0fc646e371/_ds_bundle.js"></script>
+<script src="./seat-map.js"></script>
+<style>
+body{margin:0;background:var(--color-neutral-200);font-family:var(--font-body);color:var(--color-text)}
+a{color:var(--color-accent-700)}a:hover{color:var(--color-accent-900)}
+@keyframes cpPulse{0%,100%{stroke-opacity:1}50%{stroke-opacity:.25}}
+</style>
+</helmet>
+<section style="padding:40px 32px;display:flex;flex-direction:column;gap:24px;min-width:1040px">
+  <div>
+    <div style="font-family:var(--font-heading);font-weight:600;font-size:32px;line-height:1.05">Schemat auta — fotele, wnętrza, tła</div>
+    <div style="font-size:14px;color:var(--color-neutral-700);margin-top:6px;max-width:70ch;text-wrap:pretty">Fotele rysowane jak z góry: zagłówek, oparcie, siedzisko z boczkami. Wnętrze auta jest zawsze papierem — tło żyje tylko dookoła karoserii, w neutralnych szarościach, żeby stal (wolne/moje), kreskowanie (zajęte) i czerń (kierowca) czytały się bez konkurencji. Bagażnik to kreskowane pole-placeholder na kolejną fazę.</div>
+  </div>
+
+  <div style="display:flex;gap:8px;align-items:center;font-size:13px;color:var(--color-neutral-700)"><span class="tag tag-accent">Wybrane</span>wnętrze <a href="#1a">1a</a> Kombi · tło <a href="#1f">1f</a> Mapa i szlak (z wypełnieniami)</div>
+  <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-600)">Stany fotela</div>
+  <div class="blueprint" style="background:var(--color-bg);padding:18px 24px 6px;align-self:flex-start;width:720px">
+    <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+    <div style="max-width:none">{{ statesMap }}</div>
+  </div>
+
+  <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-600)">Wnętrza</div>
+  <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start">
+    <sc-for list="{{ interiors }}" as="it" hint-placeholder-count="3">
+      <div id="{{ it.id }}" class="blueprint" style="width:300px;background:var(--color-bg);padding:16px 14px 14px;display:flex;flex-direction:column;gap:6px">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="display:flex;align-items:baseline;gap:10px"><span class="tag tag-accent" style="font-family:var(--font-heading);font-weight:600">{{ it.id }}</span><span style="font-family:var(--font-heading);font-weight:600;font-size:22px">{{ it.label }}</span></div>
+        <div style="font-size:13px;color:var(--color-neutral-700)">{{ it.desc }}</div>
+        <div style="padding:8px 0 0">{{ it.map }}</div>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-600)">Tła dookoła auta</div>
+  <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start">
+    <sc-for list="{{ backdrops }}" as="bd" hint-placeholder-count="3">
+      <div id="{{ bd.id }}" class="blueprint" style="width:300px;background:var(--color-bg);padding:16px 14px 14px;display:flex;flex-direction:column;gap:6px">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="display:flex;align-items:baseline;gap:10px"><span class="tag tag-accent" style="font-family:var(--font-heading);font-weight:600">{{ bd.id }}</span><span style="font-family:var(--font-heading);font-weight:600;font-size:22px">{{ bd.label }}</span></div>
+        <div style="font-size:13px;color:var(--color-neutral-700)">{{ bd.desc }}</div>
+        <div style="padding:8px 0 0">{{ bd.map }}</div>
+      </div>
+    </sc-for>
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  componentDidMount() { this._t = setInterval(() => { if (window.CarpoolSeatMap) { clearInterval(this._t); this.forceUpdate(); } }, 50); }
+  componentWillUnmount() { clearInterval(this._t); }
+  seats(interior, statuses) {
+    const M = window.CarpoolSeatMap, inter = M.INTERIORS[interior];
+    return [{ id: 'driver', label: 'Kierowca', x: 0, y: 0, status: 'DRIVER', who: 'Marta' }].concat(inter.slots.map((id) => ({ id, ...M.SLOTS[id], status: statuses[id] || 'FREE', who: statuses[id] === 'TAKEN' ? 'Ola' : null })));
+  }
+  renderVals() {
+    const M = window.CarpoolSeatMap;
+    if (!M) return { interiors: [], backdrops: [], statesMap: null };
+    const R = (seats, o) => M.render(React, seats, o);
+    const states = [
+      { id: 'f', label: 'Wolne', x: 0, y: 0, status: 'FREE' }, { id: 's', label: 'Wybrane', x: 1, y: 0, status: 'FREE' }, { id: 't', label: 'Zajęte', x: 2, y: 0, status: 'TAKEN', who: 'Ola' },
+      { id: 'm', label: 'Moje', x: 0.5, y: 1, status: 'MINE' }, { id: 'd', label: 'Kierowca', x: 1.5, y: 1, status: 'DRIVER' },
+    ];
+    const statesMap = React.createElement('div', { style: { maxWidth: 520, margin: '0 auto' } }, R(states, { bare: true, sel: 's', hatchId: 'hs' }));
+    const interiors = [
+      { id: '1a', ...M.INTERIORS.sedan, map: R(this.seats('sedan', { 'front-right': 'TAKEN', 'rear-middle': 'TAKEN' }), { interior: 'sedan', sel: 'rear-left', hatchId: 'h1a' }) },
+      { id: '1b', ...M.INTERIORS.suv, map: R(this.seats('suv', { 'rear-left': 'TAKEN', 'third-left': 'TAKEN', 'rear-right': 'MINE' }), { interior: 'suv', hatchId: 'h1b' }) },
+      { id: '1c', ...M.INTERIORS.pickup, map: R(this.seats('pickup', { 'rear-right': 'TAKEN' }), { interior: 'pickup', hatchId: 'h1c' }) },
+    ];
+    const bdSeats = this.seats('sedan', { 'front-right': 'TAKEN', 'rear-right': 'MINE' });
+    const backdrops = [
+      { id: '1d', label: 'Poziomice', desc: 'Warstwice mapy topograficznej — hairline w neutral-300. Najbliżej rysunku technicznego.', map: R(bdSeats, { interior: 'sedan', backdrop: 'contours', hatchId: 'h1d' }) },
+      { id: '1e', label: 'Grań', desc: 'Sylweta dwóch grani i słońce — wypełnienia neutral-200/300, bez akcentu.', map: R(bdSeats, { interior: 'sedan', backdrop: 'ridge', hatchId: 'h1e' }) },
+      { id: '1f', label: 'Mapa i szlak', desc: 'Siatka, las (accent-100 z drzewkami), jezioro, warstwice i kreskowany szlak od startu do szczytu.', map: R(bdSeats, { interior: 'sedan', backdrop: 'map', hatchId: 'h1f' }) },
+    ];
+    return { statesMap, interiors, backdrops };
+  }
+}
+</script>
+</body>
+</html>
