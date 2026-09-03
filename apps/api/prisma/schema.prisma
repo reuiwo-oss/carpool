@@ -12,44 +12,98 @@ enum Role {
   PASSENGER
 }
 
+/// Prośba czeka na decyzję kierowcy; zaakceptowana staje się rezerwacją.
+/// Odrzucenie i anulowanie kasują wiersz — miejsce musi natychmiast wrócić do
+/// puli, a unikalne indeksy niżej nie umieją pomijać "martwych" rekordów.
+/// Ślad po decyzji zostaje w rozmowie, która żyje niezależnie od rezerwacji.
+enum BookingStatus {
+  PENDING
+  ACCEPTED
+}
+
+/// Zdarzenia w wątku rysują się inaczej niż zwykła wiadomość.
+enum MessageKind {
+  TEXT
+  REQUEST
+  ACCEPTED
+  REJECTED
+  CANCELLED
+}
+
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  name         String
-  role         Role
-  rides        Ride[]   @relation("DriverRides")
-  bookings     Booking[]
-  createdAt    DateTime @default(now())
+  id            String         @id @default(cuid())
+  email         String         @unique
+  passwordHash  String
+  name          String
+  role          Role
+  rides         Ride[]         @relation("DriverRides")
+  bookings      Booking[]
+  conversations Conversation[]
+  messages      Message[]
+  createdAt     DateTime       @default(now())
 }
 
 model Ride {
-  id          String    @id @default(cuid())
-  driver      User      @relation("DriverRides", fields: [driverId], references: [id])
-  driverId    String
-  carModel    String
-  seatCount   Int       // miejsca pasażerskie
-  origin      String
-  destination String
-  departureAt DateTime
+  id            String         @id @default(cuid())
+  driver        User           @relation("DriverRides", fields: [driverId], references: [id])
+  driverId      String
+  carModel      String
+  seatCount     Int // miejsca pasażerskie
+  origin        String
+  destination   String
+  departureAt   DateTime
   // Układ miejsc jako JSON — elastyczny na niestandardowe auta (do doprecyzowania)
-  seatLayout  Json
-  bookings    Booking[]
-  createdAt   DateTime  @default(now())
+  seatLayout    Json
+  bookings      Booking[]
+  conversations Conversation[]
+  createdAt     DateTime       @default(now())
 }
 
 model Booking {
-  id          String   @id @default(cuid())
-  ride        Ride     @relation(fields: [rideId], references: [id])
+  id          String        @id @default(cuid())
+  ride        Ride          @relation(fields: [rideId], references: [id])
   rideId      String
-  passenger   User     @relation(fields: [passengerId], references: [id])
+  passenger   User          @relation(fields: [passengerId], references: [id])
   passengerId String
-  seatId      String   // np. "rear-left"
-  createdAt   DateTime @default(now())
+  seatId      String // np. "rear-left"
+  status      BookingStatus @default(PENDING)
+  createdAt   DateTime      @default(now())
 
   // Jedno miejsce w danym przejeździe może być zajęte tylko raz —
-  // baza pilnuje tego nawet przy równoczesnych rezerwacjach.
+  // baza pilnuje tego nawet przy równoczesnych rezerwacjach. Prośba blokuje
+  // miejsce tak samo jak potwierdzona rezerwacja.
   @@unique([rideId, seatId])
   // Jeden pasażer — jedno miejsce w danym przejeździe.
   @@unique([rideId, passengerId])
+}
+
+/// Wątek między pasażerem a kierowcą w kontekście jednego przejazdu.
+/// Przeżywa odrzucenie prośby, więc obie strony widzą, co się wydarzyło.
+model Conversation {
+  id          String    @id @default(cuid())
+  ride        Ride      @relation(fields: [rideId], references: [id])
+  rideId      String
+  passenger   User      @relation(fields: [passengerId], references: [id])
+  passengerId String
+  messages    Message[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([rideId, passengerId])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  conversationId String
+  sender         User         @relation(fields: [senderId], references: [id])
+  senderId       String
+  kind           MessageKind  @default(TEXT)
+  body           String
+  /// Miejsce, którego dotyczy zdarzenie — do etykiety "Tył lewe" w wątku.
+  seatId         String?
+  readAt         DateTime?
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId, createdAt])
 }

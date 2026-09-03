@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import type { Seat } from '@carpool/shared';
-import { bookSeat, cancelBooking, getRide, type RideDetail } from '../features/rides/ridesApi';
+import { cancelBooking, getRide, requestSeat, type RideDetail } from '../features/rides/ridesApi';
 import { useAuth } from '../features/auth/AuthContext';
 import { useToast } from '../components/ToastContext';
+import { useUnread } from '../features/messages/UnreadContext';
 import SeatMap from '../features/seat-picker/SeatMap';
 import { ArrowRightIcon, CheckIcon } from '../components/icons';
 import { Avatar, BackButton, Corners } from '../components/ui';
@@ -20,9 +21,12 @@ export default function RideDetailPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const say = useToast();
+  const { refresh } = useUnread();
 
   const [ride, setRide] = useState<RideDetail | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
   const { backTo = '/', backLabel = 'Wyniki' } = (location.state ?? {}) as BackState;
@@ -38,11 +42,15 @@ export default function RideDetailPage() {
     [ride, user],
   );
 
-  /** Miejsce zalogowanego pasażera rysujemy jako MINE — API tego nie wie. */
+  /**
+   * Potwierdzone miejsce zalogowanego pasażera rysujemy jako MINE.
+   * Oczekującą prośbę API oznaczyło już jako PENDING — nie nadpisujemy jej.
+   */
   const seats: Seat[] = useMemo(() => {
     if (!ride) return [];
+    if (!myBooking || myBooking.status !== 'ACCEPTED') return ride.seats;
     return ride.seats.map((s) =>
-      myBooking && s.id === myBooking.seatId ? { ...s, status: 'MINE' as const } : s,
+      s.id === myBooking.seatId ? { ...s, status: 'MINE' as const } : s,
     );
   }, [ride, myBooking]);
 
@@ -55,11 +63,45 @@ export default function RideDetailPage() {
   const free = seats.filter((s) => s.status === 'FREE').length;
   const selectedSeat = seats.find((s) => s.id === selected) ?? null;
   const mySeat = seats.find((s) => s.status === 'MINE') ?? null;
-  const roster = seats.filter((s) => s.status === 'TAKEN' && s.who);
+  const myPendingSeat = myBooking?.status === 'PENDING'
+    ? seats.find((s) => s.id === myBooking.seatId) ?? null
+    : null;
+  const roster = seats.filter((s) => (s.status === 'TAKEN' || s.status === 'PENDING') && s.who);
 
-  /** Dwa dotknięcia tego samego fotela: pierwsze wybiera, drugie rezerwuje. */
-  const tapSeat = async (seat: Seat) => {
-    if (!isPassenger || !user) return;
+  /** Wysłanie prośby: drugi dotyk tego samego fotela albo przycisk w karcie. */
+  const submitRequest = async (seat: Seat) => {
+    if (!isPassenger || !user || busy) return;
+    if (myBooking) {
+      say('Masz już miejsce w tym aucie.');
+      return;
+    }
+    setBusy(true);
+    const before = ride;
+    setSelected(null);
+    setRide({
+      ...ride,
+      seats: ride.seats.map((s) => (s.id === seat.id ? { ...s, status: 'PENDING' as const } : s)),
+      bookings: [
+        ...ride.bookings,
+        { id: 'optimistic', seatId: seat.id, passengerId: user.id, status: 'PENDING' },
+      ],
+    });
+    try {
+      await requestSeat(ride.id, seat.id, note);
+      say(`Prośba wysłana: ${seat.label}.`);
+      setNote('');
+      await load();
+      refresh();
+    } catch (e) {
+      setRide(before);
+      say((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const tapSeat = (seat: Seat) => {
+    if (!isPassenger) return;
     if (myBooking) {
       say('Masz już miejsce w tym aucie.');
       return;
@@ -68,34 +110,24 @@ export default function RideDetailPage() {
       setSelected(seat.id);
       return;
     }
-
-    const before = ride;
-    setSelected(null);
-    setRide({
-      ...ride,
-      bookings: [...ride.bookings, { id: 'optimistic', seatId: seat.id, passengerId: user.id }],
-    });
-    try {
-      await bookSeat(ride.id, seat.id);
-      say(`Miejsce zarezerwowane: ${seat.label}.`);
-      await load();
-    } catch (e) {
-      setRide(before);
-      say((e as Error).message);
-    }
+    submitRequest(seat);
   };
 
   const cancel = async () => {
-    if (!myBooking) return;
+    if (!myBooking || busy) return;
+    setBusy(true);
     const before = ride;
     setRide({ ...ride, bookings: ride.bookings.filter((b) => b.id !== myBooking.id) });
     try {
       await cancelBooking(myBooking.id);
-      say('Rezerwacja anulowana.');
+      say(myBooking.status === 'PENDING' ? 'Prośba wycofana.' : 'Rezerwacja anulowana.');
       await load();
+      refresh();
     } catch (e) {
       setRide(before);
       say((e as Error).message);
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -155,6 +187,7 @@ export default function RideDetailPage() {
 
         <div className="legend">
           <span><i className="sw-free" />wolne</span>
+          <span><i className="sw-pending" />czeka</span>
           <span><i className="sw-taken" />zajęte</span>
           <span><i className="sw-mine" />moje</span>
           <span><i className="sw-driver" />kierowca</span>
@@ -172,23 +205,63 @@ export default function RideDetailPage() {
                 Do zobaczenia w aucie.
               </div>
             </div>
-            <button type="button" className="btn btn-secondary" onClick={cancel}>Anuluj</button>
+            <button type="button" className="btn btn-secondary" onClick={cancel} disabled={busy}>Anuluj</button>
+          </div>
+        ) : myPendingSeat ? (
+          <div className="blueprint" style={{
+            padding: '14px 16px', display: 'flex', flexDirection: 'column',
+            gap: 10, margin: '0 6px', borderColor: 'var(--color-accent)',
+          }}>
+            <Corners />
+            <div>
+              <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 19, lineHeight: 1.1 }}>
+                Prośba wysłana — {myPendingSeat.label}
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--color-neutral-700)', marginTop: 2 }}>
+                Miejsce jest dla ciebie zablokowane, dopóki {ride.driver.name} nie potwierdzi.
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button type="button" className="btn btn-ghost" onClick={cancel} disabled={busy}>Wycofaj</button>
+              <button type="button" className="btn btn-secondary" onClick={() => navigate('/messages')}>
+                Napisz do kierowcy
+              </button>
+            </div>
           </div>
         ) : selectedSeat ? (
           <div className="blueprint" style={{
-            padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12,
-            margin: '0 6px', borderColor: 'var(--color-accent)',
+            padding: '14px 16px', display: 'flex', flexDirection: 'column',
+            gap: 10, margin: '0 6px', borderColor: 'var(--color-accent)',
           }}>
             <Corners />
-            <div style={{ flex: 1 }}>
+            <div>
               <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 19, lineHeight: 1.1 }}>
                 {selectedSeat.label}
               </div>
               <div style={{ fontSize: 13, color: 'var(--color-neutral-700)', marginTop: 2 }}>
-                Dotknij fotel jeszcze raz, żeby potwierdzić.
+                Kierowca potwierdza każdą prośbę. Dotknij fotel jeszcze raz albo wyślij poniżej.
               </div>
             </div>
-            <button type="button" className="btn btn-ghost" onClick={() => setSelected(null)}>Anuluj</button>
+            <div className="field">
+              <label htmlFor="seat-note">Pytania lub uwagi (opcjonalnie)</label>
+              <textarea
+                id="seat-note"
+                className="input"
+                placeholder="np. Będę miał duży plecak — zmieści się?"
+                value={note}
+                maxLength={1000}
+                onChange={(e) => setNote(e.target.value)}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button type="button" className="btn btn-ghost" onClick={() => { setSelected(null); setNote(''); }}>
+                Anuluj
+              </button>
+              <button type="button" className="btn btn-primary" disabled={busy}
+                onClick={() => submitRequest(selectedSeat)}>
+                Wyślij prośbę
+              </button>
+            </div>
           </div>
         ) : isOwn && roster.length > 0 ? (
           <>
@@ -199,10 +272,21 @@ export default function RideDetailPage() {
                 borderTop: '1px solid var(--color-divider)',
               }}>
                 <Avatar name={s.who!} size={34} fontSize={14} />
-                <div style={{ flex: 1, fontWeight: 500 }}>{s.who}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 500 }}>{s.who}</div>
+                  {s.status === 'PENDING' && (
+                    <div style={{ fontSize: 12, color: 'var(--color-accent-700)' }}>czeka na potwierdzenie</div>
+                  )}
+                </div>
                 <div style={{ fontSize: 13, color: 'var(--color-neutral-700)' }}>{s.label}</div>
               </div>
             ))}
+            {roster.some((s) => s.status === 'PENDING') && (
+              <button type="button" className="btn btn-secondary btn-block" style={{ marginTop: 10 }}
+                onClick={() => navigate('/messages')}>
+                Rozpatrz prośby w Wiadomościach
+              </button>
+            )}
           </>
         ) : isPassenger && free > 0 ? (
           <div style={{ textAlign: 'center', fontSize: 14, color: 'var(--color-neutral-700)', padding: '4px 0 8px' }}>

@@ -1,4 +1,4 @@
-import type { Seat } from '@carpool/shared';
+import type { BookingStatus, Seat } from '@carpool/shared';
 import { api } from '../../api/client';
 
 /**
@@ -15,11 +15,11 @@ export interface RideListItem {
   destination: string;
   departureAt: string;
   driver: { name: string };
-  bookings: { seatId: string }[];
+  bookings: { seatId: string; status?: BookingStatus }[];
 }
 
 export interface MyRide extends Omit<RideListItem, 'driver' | 'bookings'> {
-  bookings: { seatId: string; passenger: { name: string } }[];
+  bookings: { id: string; seatId: string; status: BookingStatus; passenger: { name: string } }[];
 }
 
 export interface RideDetail {
@@ -32,7 +32,7 @@ export interface RideDetail {
   departureAt: string;
   driver: { name: string };
   seats: Seat[];
-  bookings: { id: string; seatId: string; passengerId: string }[];
+  bookings: { id: string; seatId: string; passengerId: string; status: BookingStatus }[];
 }
 
 export interface MyBooking {
@@ -40,6 +40,7 @@ export interface MyBooking {
   rideId: string;
   seatId: string;
   passengerId: string;
+  status: BookingStatus;
   createdAt: string;
   ride: RideListItem & { driver: { name: string } };
 }
@@ -56,8 +57,18 @@ export const createRide = (data: {
   departureAt: string;
 }) => api<{ id: string }>('/rides', { method: 'POST', body: JSON.stringify(data) });
 
-export const bookSeat = (rideId: string, seatId: string) =>
-  api<{ id: string }>('/bookings', { method: 'POST', body: JSON.stringify({ rideId, seatId }) });
+/** Prośba o miejsce — `note` trafia jako pierwsza wiadomość w wątku. */
+export const requestSeat = (rideId: string, seatId: string, note: string) =>
+  api<{ id: string; conversationId: string }>('/bookings', {
+    method: 'POST',
+    body: JSON.stringify({ rideId, seatId, note }),
+  });
+
+export const acceptBooking = (bookingId: string) =>
+  api(`/bookings/${bookingId}/accept`, { method: 'POST' });
+
+export const rejectBooking = (bookingId: string) =>
+  api(`/bookings/${bookingId}/reject`, { method: 'POST' });
 
 export const listMyBookings = () => api<MyBooking[]>('/bookings/my');
 

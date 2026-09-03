@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { generateSeatLayout, type Seat } from '@carpool/shared';
+import { generateSeatLayout, type BookingStatus, type Seat } from '@carpool/shared';
 import {
   cancelBooking,
   listMyBookings,
@@ -14,12 +14,29 @@ import SeatMap from '../features/seat-picker/SeatMap';
 import { Avatar, Corners } from '../components/ui';
 import { formatWhen, plural } from '../lib/format';
 
-/** Układ miejsc z zajętością — ten sam generator co po stronie API. */
-function seatsWithBookings(seatCount: number, taken: string[], mineSeatId?: string): Seat[] {
+interface SeatOccupancy {
+  seatId: string;
+  status?: BookingStatus;
+}
+
+/**
+ * Układ miejsc z zajętością — ten sam generator co po stronie API.
+ * `mineSeatId` dostaje status zależny od tego, czy prośba jest już potwierdzona.
+ */
+function seatsWithBookings(
+  seatCount: number,
+  taken: SeatOccupancy[],
+  mine?: { seatId: string; status: BookingStatus },
+): Seat[] {
+  const by = new Map(taken.map((t) => [t.seatId, t.status]));
   return generateSeatLayout(seatCount).map((seat) => {
     if (seat.status === 'DRIVER') return seat;
-    if (mineSeatId && seat.id === mineSeatId) return { ...seat, status: 'MINE' as const };
-    return taken.includes(seat.id) ? { ...seat, status: 'TAKEN' as const } : seat;
+    if (mine && seat.id === mine.seatId) {
+      return { ...seat, status: mine.status === 'ACCEPTED' ? ('MINE' as const) : ('PENDING' as const) };
+    }
+    if (!by.has(seat.id)) return seat;
+    // Cudza prośba wygląda dla nas po prostu na zajęte miejsce.
+    return { ...seat, status: 'TAKEN' as const };
   });
 }
 
@@ -44,7 +61,7 @@ export default function MinePage() {
     setBookings((bs) => bs?.filter((b) => b.id !== booking.id) ?? null);
     try {
       await cancelBooking(booking.id);
-      say('Rezerwacja anulowana.');
+      say(booking.status === 'PENDING' ? 'Prośba wycofana.' : 'Rezerwacja anulowana.');
       load();
     } catch (e) {
       setBookings(before);
@@ -81,10 +98,11 @@ export default function MinePage() {
 
         {!isDriver && bookings?.map((b) => {
           const when = formatWhen(b.ride.departureAt);
+          const pending = b.status === 'PENDING';
           const seats = seatsWithBookings(
             b.ride.seatCount,
-            (b.ride.bookings ?? []).map((x) => x.seatId),
-            b.seatId,
+            b.ride.bookings ?? [],
+            { seatId: b.seatId, status: b.status },
           );
           const mySeat = seats.find((s) => s.id === b.seatId);
           return (
@@ -106,12 +124,19 @@ export default function MinePage() {
                   <SeatMap seats={seats} mini />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <div className="kicker">Twoje miejsce</div>
+                  <div className="kicker">{pending ? 'Prośba o miejsce' : 'Twoje miejsce'}</div>
                   <div style={{ fontWeight: 500 }}>{mySeat?.label ?? b.seatId}</div>
+                  {pending && (
+                    <span className="tag tag-accent" style={{ marginTop: 4, fontSize: 11 }}>
+                      czeka na kierowcę
+                    </span>
+                  )}
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                <button type="button" className="btn btn-ghost" onClick={() => cancel(b)}>Anuluj rezerwację</button>
+                <button type="button" className="btn btn-ghost" onClick={() => cancel(b)}>
+                  {pending ? 'Wycofaj prośbę' : 'Anuluj rezerwację'}
+                </button>
                 <button type="button" className="btn btn-secondary" onClick={() => navigate(`/rides/${b.rideId}`, {
                   state: { backTo: '/mine', backLabel: 'Rezerwacje' },
                 })}>
@@ -139,8 +164,10 @@ export default function MinePage() {
 
         {isDriver && rides?.map((r) => {
           const when = formatWhen(r.departureAt);
-          const seats = seatsWithBookings(r.seatCount, r.bookings.map((x) => x.seatId));
-          const names = r.bookings.map((x) => x.passenger.name).join(', ');
+          const seats = seatsWithBookings(r.seatCount, r.bookings);
+          const accepted = r.bookings.filter((b) => b.status === 'ACCEPTED');
+          const waiting = r.bookings.filter((b) => b.status === 'PENDING');
+          const names = accepted.map((x) => x.passenger.name).join(', ');
           return (
             <button key={r.id} type="button" className="blueprint"
               onClick={() => navigate(`/rides/${r.id}`, { state: { backTo: '/mine', backLabel: 'Moje przejazdy' } })}
@@ -164,22 +191,21 @@ export default function MinePage() {
                 <div style={{ flex: 1 }}>
                   <div className="kicker">Obsada</div>
                   <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 22, lineHeight: 1.1 }}>
-                    {r.bookings.length} z {r.seatCount}
+                    {accepted.length} z {r.seatCount}
                   </div>
                   <div style={{ fontSize: 13, color: 'var(--color-neutral-700)' }}>
                     {names || 'Jeszcze nikt — podziel się linkiem'}
                   </div>
+                  {waiting.length > 0 && (
+                    <span className="tag tag-accent" style={{ marginTop: 6, fontSize: 11 }}>
+                      {waiting.length} {plural(waiting.length, 'prośba czeka', 'prośby czekają', 'próśb czeka')}
+                    </span>
+                  )}
                 </div>
               </div>
             </button>
           );
         })}
-
-        {isDriver && rides && rides.length > 0 && (
-          <p className="kicker" style={{ textAlign: 'center', margin: 0 }}>
-            {rides.length} {plural(rides.length, 'przejazd', 'przejazdy', 'przejazdów')}
-          </p>
-        )}
       </div>
     </div>
   );
