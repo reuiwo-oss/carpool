@@ -179,6 +179,7 @@ export default function RideDetailPage() {
         <div style={{ padding: '4px 6px 0' }}>
           <SeatMap
             seats={seats}
+            interior={ride.interior}
             selectedSeatId={selected}
             showNames={isOwn}
             onSelect={isPassenger ? tapSeat : undefined}
@@ -191,6 +192,7 @@ export default function RideDetailPage() {
           <span><i className="sw-taken" />zajęte</span>
           <span><i className="sw-mine" />moje</span>
           <span><i className="sw-driver" />kierowca</span>
+          <span><i className="sw-trunk" />bagażnik — wkrótce</span>
         </div>
 
         {/* Dokładnie jedna sekcja pod schematem — zależnie od roli i stanu. */}
