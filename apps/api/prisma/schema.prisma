@@ -114,11 +114,11 @@ model Conversation {
   messages  Message[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
-
-  @@unique([rideId, passengerId])
   // Unikalność pary (wycieczka, uczestnik, kierowca) dochodzi w etapie 6, gdy
   // `tripId`/`driverId` przestaną być opcjonalne — na NULL-ach Postgres i tak
   // niczego nie pilnuje. Do tego czasu jedyność wątku sprawdza serwis.
+
+  @@unique([rideId, passengerId])
 }
 
 model Message {
@@ -217,9 +217,24 @@ model Trip {
   createdById String
   createdAt   DateTime       @default(now())
 
-  participants  TripParticipant[]
-  rides         TripRide[]
-  conversations Conversation[]
+  participants    TripParticipant[]
+  rides           TripRide[]
+  conversations   Conversation[]
+  legacyMigration LegacyRideMigration?
+}
+
+/// Ślad po przeniesieniu starego przejazdu — dzięki niemu skrypt migracji
+/// można puścić drugi raz bez dublowania danych. Kaskada z `Trip` sprawia,
+/// że ręczne skasowanie wycieczki pozwala przenieść przejazd na nowo.
+/// Tabela znika w etapie 6 razem ze starym modelem.
+model LegacyRideMigration {
+  legacyRideId String   @id
+  trip         Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  tripId       String   @unique
+  tripRideId   String
+  migratedAt   DateTime @default(now())
+
+  @@map("_LegacyRideMigration")
 }
 
 model TripParticipant {

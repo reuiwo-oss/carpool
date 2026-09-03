@@ -5,7 +5,8 @@
     "start:dev": "nest start --watch",
     "build": "nest build",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:generate": "prisma generate"
+    "prisma:generate": "prisma generate",
+    "migrate:trips": "ts-node prisma/scripts/migrate-rides-to-trips.ts"
   },
   "dependencies": {
     "@carpool/shared": "*",
@@ -28,6 +29,7 @@
     "@types/bcryptjs": "^2.4.6",
     "@types/passport-jwt": "^4.0.1",
     "prisma": "^5.20.0",
+    "ts-node": "^10.9.2",
     "typescript": "^5.5.0"
   }
 }
