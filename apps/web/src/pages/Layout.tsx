@@ -3,7 +3,7 @@ import { useAuth } from '../features/auth/AuthContext';
 import TabBar from '../components/TabBar';
 
 /** Ekrany z paskiem zakładek — szczegóły i publikacja mają zamiast niego „wróć". */
-const TAB_ROUTES = ['/', '/community', '/mine'];
+const TAB_ROUTES = ['/', '/community', '/mine', '/messages'];
 
 export default function Layout() {
   const { user } = useAuth();

@@ -5,6 +5,8 @@ import RegisterPage from './pages/RegisterPage';
 import SearchPage from './pages/SearchPage';
 import CommunityPage from './pages/CommunityPage';
 import MinePage from './pages/MinePage';
+import MessagesPage from './pages/MessagesPage';
+import ThreadPage from './pages/ThreadPage';
 import RideDetailPage from './pages/RideDetailPage';
 import CreateRidePage from './pages/CreateRidePage';
 import Layout from './pages/Layout';
@@ -26,6 +28,8 @@ export default function App() {
         <Route path="/" element={<Protected><SearchPage /></Protected>} />
         <Route path="/community" element={<Protected><CommunityPage /></Protected>} />
         <Route path="/mine" element={<Protected><MinePage /></Protected>} />
+        <Route path="/messages" element={<Protected><MessagesPage /></Protected>} />
+        <Route path="/messages/:id" element={<Protected><ThreadPage /></Protected>} />
         <Route path="/rides/new" element={<Protected role="DRIVER"><CreateRidePage /></Protected>} />
         <Route path="/rides/:id" element={<Protected><RideDetailPage /></Protected>} />
       </Route>

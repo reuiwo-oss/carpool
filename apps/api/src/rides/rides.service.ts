@@ -40,7 +40,9 @@ export class RidesService {
     return this.prisma.ride.findMany({
       where: { driverId },
       include: {
-        bookings: { select: { seatId: true, passenger: { select: { name: true } } } },
+        bookings: {
+          select: { id: true, seatId: true, status: true, passenger: { select: { name: true } } },
+        },
       },
       orderBy: { departureAt: 'asc' },
     });
@@ -53,7 +55,13 @@ export class RidesService {
       include: {
         driver: { select: { name: true } },
         bookings: {
-          select: { id: true, seatId: true, passengerId: true, passenger: { select: { name: true } } },
+          select: {
+            id: true,
+            seatId: true,
+            passengerId: true,
+            status: true,
+            passenger: { select: { name: true } },
+          },
         },
       },
     });
@@ -70,9 +78,15 @@ export class RidesService {
       }
       const booking = bySeat.get(seat.id);
       if (!booking) return seat;
+
+      // Oczekującą prośbę widzą tylko zainteresowani: pasażer, który poprosił,
+      // i kierowca, który ma zdecydować. Dla reszty miejsce jest po prostu zajęte.
+      const concerns = isOwner || booking.passengerId === viewerId;
+      const status = booking.status === 'PENDING' && concerns ? 'PENDING' : 'TAKEN';
+
       return {
         ...seat,
-        status: 'TAKEN' as const,
+        status: status as Seat['status'],
         ...(isOwner ? { who: booking.passenger.name } : {}),
       };
     });
@@ -80,11 +94,12 @@ export class RidesService {
     return {
       ...ride,
       seats,
-      // Bez imion — pasażer musi rozpoznać własną rezerwację (id do anulowania).
+      // Bez imion — pasażer musi rozpoznać własną prośbę (id do anulowania).
       bookings: ride.bookings.map((b) => ({
         id: b.id,
         seatId: b.seatId,
         passengerId: b.passengerId,
+        status: b.status,
       })),
     };
   }

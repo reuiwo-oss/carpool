@@ -112,3 +112,24 @@ export const ArrowLeftRightIcon = ({ size = 18, color }: IconProps) => (
     <path d="M20 17H4" />
   </svg>
 );
+
+export const MailIcon = ({ size = 22, color }: IconProps) => (
+  <svg {...base(size, color)}>
+    <rect width="20" height="16" x="2" y="4" rx="2" />
+    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+  </svg>
+);
+
+export const SendIcon = ({ size = 18, color }: IconProps) => (
+  <svg {...base(size, color)}>
+    <path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z" />
+    <path d="m21.854 2.147-10.94 10.939" />
+  </svg>
+);
+
+export const XIcon = ({ size = 18, color }: IconProps) => (
+  <svg {...base(size, color)}>
+    <path d="M18 6 6 18" />
+    <path d="m6 6 12 12" />
+  </svg>
+);

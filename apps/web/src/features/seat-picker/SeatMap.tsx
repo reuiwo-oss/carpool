@@ -33,6 +33,7 @@ const MUTED = 'var(--color-neutral-600)';
 
 const STATUS_PL: Record<Seat['status'], string> = {
   FREE: 'wolne',
+  PENDING: 'oczekuje na potwierdzenie',
   TAKEN: 'zajęte',
   MINE: 'twoje',
   DRIVER: 'kierowca',
@@ -123,17 +124,21 @@ export default function SeatMap({
           status === 'DRIVER' ? INK
           : status === 'MINE' ? ACCENT
           : status === 'TAKEN' ? `url(#${hatchId})`
+          : status === 'PENDING' ? 'var(--color-accent-100)'
           : isSelected ? 'var(--color-accent-200)'
           : PAPER;
         const stroke =
           status === 'DRIVER' ? INK
-          : status === 'MINE' || isSelected ? ACCENT
+          : status === 'MINE' || status === 'PENDING' || isSelected ? ACCENT
           : status === 'TAKEN' ? 'var(--color-neutral-400)'
           : ACCENT;
         const glyph =
           status === 'DRIVER' || status === 'MINE' ? PAPER
           : status === 'TAKEN' ? 'var(--color-neutral-600)'
           : 'var(--color-accent-700)';
+        // Prośba to jeszcze nie rezerwacja — obrys przerywany, jak linia
+        // pomocnicza na rysunku, dopóki kierowca nie potwierdzi.
+        const dash = status === 'PENDING' ? '5 4' : undefined;
 
         const clickable = status === 'FREE' && !!onSelect;
         const select = () => onSelect?.(seat);
@@ -141,6 +146,7 @@ export default function SeatMap({
         const label =
           status === 'DRIVER' ? (showNames && seat.who ? seat.who : 'Kierowca')
           : status === 'TAKEN' ? (showNames && seat.who ? seat.who : 'Zajęte')
+          : status === 'PENDING' ? (showNames && seat.who ? seat.who : 'Oczekuje')
           : status === 'MINE' ? 'Twoje'
           : seat.label;
 
@@ -161,8 +167,8 @@ export default function SeatMap({
           >
             {/* cała komórka jest celem dotknięcia, nie sam obrys fotela */}
             <rect x={cx - CELL / 2 + 4} y={cy - CELL / 2 + 2} width={CELL - 8} height={CELL - 4} fill="transparent" />
-            <rect x={cx - 36} y={cy - 36} width={72} height={16} fill={fill} stroke={stroke} strokeWidth={isSelected ? 2 : 1.5} />
-            <rect x={cx - 32} y={cy - 20} width={64} height={50} fill={fill} stroke={stroke} strokeWidth={isSelected ? 2 : 1.5} />
+            <rect x={cx - 36} y={cy - 36} width={72} height={16} fill={fill} stroke={stroke} strokeWidth={isSelected ? 2 : 1.5} strokeDasharray={dash} />
+            <rect x={cx - 32} y={cy - 20} width={64} height={50} fill={fill} stroke={stroke} strokeWidth={isSelected ? 2 : 1.5} strokeDasharray={dash} />
 
             {isSelected && (
               <rect className="seat-ring" x={cx - 44} y={cy - 44} width={88} height={84}
@@ -176,6 +182,13 @@ export default function SeatMap({
                 <line x1={-11} y1={0} x2={-3} y2={0} />
                 <line x1={3} y1={0} x2={11} y2={0} />
                 <line x1={0} y1={3} x2={0} y2={11} />
+              </g>
+            )}
+            {status === 'PENDING' && (
+              // zegar: prośba czeka na decyzję
+              <g stroke={glyph} strokeWidth={1.5} fill="none" transform={`translate(${cx} ${cy + 5})`}>
+                <circle r={10} />
+                <path d="M0 -5 V0 L4 3" strokeLinecap="round" strokeLinejoin="round" />
               </g>
             )}
             {status === 'MINE' && (
