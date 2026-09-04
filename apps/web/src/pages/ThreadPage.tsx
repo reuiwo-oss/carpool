@@ -6,7 +6,7 @@ import {
   sendMessage,
   type ConversationDetail,
 } from '../features/messages/messagesApi';
-import { acceptBooking, rejectBooking } from '../features/rides/ridesApi';
+import { acceptReservation, cancelReservation } from '../features/trips/tripsApi';
 import { useAuth } from '../features/auth/AuthContext';
 import { useToast } from '../components/ToastContext';
 import { useUnread } from '../features/messages/UnreadContext';
@@ -67,8 +67,8 @@ export default function ThreadPage() {
   if (error) return <p style={{ padding: 20, color: 'var(--color-accent-900)' }}>{error}</p>;
   if (!thread) return <p style={{ padding: 20, color: 'var(--color-neutral-700)' }}>Wczytywanie…</p>;
 
-  const when = formatWhen(thread.ride.departureAt);
-  const pending = thread.bookingStatus === 'PENDING';
+  const when = formatWhen(thread.trip.startsAt);
+  const pending = thread.reservationStatus === 'PENDING';
 
   const send = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,14 +87,14 @@ export default function ThreadPage() {
   };
 
   const decide = async (accept: boolean) => {
-    if (!thread.bookingId || busy) return;
+    if (!thread.reservationId || busy) return;
     setBusy(true);
     try {
       if (accept) {
-        await acceptBooking(thread.bookingId);
+        await acceptReservation(thread.reservationId);
         say('Prośba potwierdzona.');
       } else {
-        await rejectBooking(thread.bookingId);
+        await cancelReservation(thread.reservationId);
         say('Prośba odrzucona.');
       }
       await load();
@@ -112,11 +112,11 @@ export default function ThreadPage() {
         <button
           type="button"
           className="btn btn-ghost"
-          onClick={() => navigate(`/rides/${thread.rideId}`, {
+          onClick={() => navigate(`/trips/${thread.tripId}`, {
             state: { backTo: `/messages/${thread.id}`, backLabel: 'Wątek' },
           })}
         >
-          Przejazd
+          Wycieczka
         </button>
       </div>
 
@@ -127,7 +127,7 @@ export default function ThreadPage() {
             {thread.withName}
           </div>
           <div style={{ fontSize: 13, color: 'var(--color-neutral-700)' }}>
-            {thread.ride.origin} → {thread.ride.destination} · {when.dayShort}, {when.time}
+            {thread.trip.title} · {when.dayShort}, {when.time}
           </div>
         </div>
       </div>

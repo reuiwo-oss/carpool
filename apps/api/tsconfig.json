@@ -5,8 +5,13 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "strict": true,
+    "rootDir": "./src",
     "outDir": "./dist",
     "esModuleInterop": true,
     "skipLibCheck": true
-  }
+  },
+  // Skrypty w `prisma/` odpala ts-node na żądanie i nie mają czego szukać
+  // w buildzie. Bez tego wspólny katalog źródeł przesuwa się o poziom wyżej,
+  // a `nest build` zaczyna pisać do `dist/src` — i `dist/main.js` zostaje stary.
+  "include": ["src"]
 }

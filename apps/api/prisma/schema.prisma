@@ -7,18 +7,58 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Role {
-  DRIVER
-  PASSENGER
+// ─────────────────────────────────────────────────────────────────────────────
+// Model danych: wycieczka
+//
+// Wycieczka (`Trip`) to wyjazd w obie strony tym samym składem. Auto (`Ride`)
+// należy do całej wycieczki, nie do pojedynczego kursu — stąd odcinki
+// (`RideLeg`) na dojazd i powrót zamiast dwóch osobnych przejazdów.
+//
+// Rola w wycieczce nie jest zapisywana ani w koncie, ani w uczestnictwie:
+// wylicza się z danych (`deriveParticipantRoles` w pakiecie shared). Kierowca
+// ma w wycieczce auto, pasażer ma rezerwację miejsca, a uczestnik bez jednego
+// i drugiego szuka miejsca. Zapisane jest tylko `isOrganizer`.
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum TripVisibility {
+  PUBLIC
+  LINK_ONLY
+  PRIVATE
 }
 
-/// Prośba czeka na decyzję kierowcy; zaakceptowana staje się rezerwacją.
-/// Odrzucenie i anulowanie kasują wiersz — miejsce musi natychmiast wrócić do
-/// puli, a unikalne indeksy niżej nie umieją pomijać "martwych" rekordów.
-/// Ślad po decyzji zostaje w rozmowie, która żyje niezależnie od rezerwacji.
-enum BookingStatus {
+enum TripStatus {
+  OPEN
+  CONFIRMED
+  DONE
+  CANCELLED
+}
+
+enum LegDirection {
+  OUTBOUND
+  RETURN
+}
+
+/// Rezerwacja domyślnie dotyczy obu odcinków — jedziemy tam i z powrotem tym
+/// samym składem. Jeden kierunek to wyjątek, nie reguła.
+enum ReservationLegs {
+  BOTH
+  OUTBOUND_ONLY
+  RETURN_ONLY
+}
+
+/// Prośba blokuje fotel od razu, ale pasażer jedzie dopiero po decyzji
+/// kierowcy tego auta. Odmowa i rezygnacja kasują wiersz — miejsce musi
+/// natychmiast wrócić do puli, a unikalne indeksy nie umieją pomijać
+/// "martwych" rekordów. Ślad po decyzji zostaje w wątku rozmowy.
+enum ReservationStatus {
   PENDING
   ACCEPTED
+}
+
+enum RequestStatus {
+  OPEN
+  FULFILLED
+  EXPIRED
 }
 
 /// Zdarzenia w wątku rysują się inaczej niż zwykła wiadomość.
@@ -31,68 +71,157 @@ enum MessageKind {
 }
 
 model User {
-  id            String         @id @default(cuid())
-  email         String         @unique
-  passwordHash  String
-  name          String
-  role          Role
-  rides         Ride[]         @relation("DriverRides")
-  bookings      Booking[]
-  conversations Conversation[]
-  messages      Message[]
-  createdAt     DateTime       @default(now())
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  avatarUrl    String?
+  createdAt    DateTime @default(now())
+
+  vehicles       Vehicle[]
+  participations TripParticipant[]
+  rides          Ride[]
+  reservations   SeatReservation[]
+  requests       RideRequest[]
+  createdTrips   Trip[]            @relation("TripCreator")
+  conversations  Conversation[]    @relation("PassengerConversations")
+  driverThreads  Conversation[]    @relation("DriverConversations")
+  messages       Message[]
 }
 
+model Vehicle {
+  id      String @id @default(cuid())
+  owner   User   @relation(fields: [ownerId], references: [id])
+  ownerId String
+  make    String
+  model   String
+  /// Wnętrze auta (INTERIORS w shared) — z niego wynikają liczba miejsc
+  /// i kształt schematu. String, nie enum: kolejne warianty bez migracji.
+  interior   String   @default("sedan")
+  seatLayout Json
+  createdAt  DateTime @default(now())
+  rides      Ride[]
+}
+
+model Trip {
+  id          String         @id @default(cuid())
+  title       String
+  destination String
+  description String?
+  /// Wyliczane z odcinków aut: najwcześniejszy wyjazd „tam" i najpóźniejszy
+  /// powrót. Do pierwszego auta trzymają wartości z formularza.
+  startsAt    DateTime
+  endsAt      DateTime
+  visibility  TripVisibility @default(PUBLIC)
+  status      TripStatus     @default(OPEN)
+  createdBy   User           @relation("TripCreator", fields: [createdById], references: [id])
+  createdById String
+  createdAt   DateTime       @default(now())
+
+  participants  TripParticipant[]
+  rides         Ride[]
+  conversations Conversation[]
+}
+
+model TripParticipant {
+  trip   Trip   @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  tripId String
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+  /// Jedyna rola zapisywana wprost — reszta wylicza się z danych.
+  isOrganizer Boolean  @default(false)
+  joinedAt    DateTime @default(now())
+
+  @@id([tripId, userId])
+}
+
+/// Auto w wycieczce — jedno na uczestnika, na całą wycieczkę.
 model Ride {
-  id            String         @id @default(cuid())
-  driver        User           @relation("DriverRides", fields: [driverId], references: [id])
-  driverId      String
-  carModel      String
-  /// Wnętrze auta (INTERIORS w pakiecie shared). String, nie enum —
-  /// kolejne warianty dochodzą bez migracji.
-  interior      String         @default("sedan")
-  seatCount     Int // miejsca pasażerskie — wynika z wnętrza
-  origin        String
-  destination   String
-  departureAt   DateTime
-  // Układ miejsc jako JSON — elastyczny na niestandardowe auta (do doprecyzowania)
-  seatLayout    Json
-  bookings      Booking[]
-  conversations Conversation[]
-  createdAt     DateTime       @default(now())
+  id        String  @id @default(cuid())
+  trip      Trip    @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  tripId    String
+  driver    User    @relation(fields: [driverId], references: [id])
+  driverId  String
+  vehicle   Vehicle @relation(fields: [vehicleId], references: [id])
+  vehicleId String
+  /// Kopia układu z pojazdu w chwili zgłoszenia auta — późniejsza zmiana
+  /// w garażu nie przestawia foteli ludziom, którzy już je zajęli.
+  seatLayoutSnapshot Json
+  /// Kopia wnętrza z tego samego powodu — steruje rysowaniem schematu.
+  interior           String   @default("sedan")
+  note               String?
+  createdAt          DateTime @default(now())
+
+  legs         RideLeg[]
+  reservations SeatReservation[]
+
+  /// Jeden uczestnik — jedno auto w wycieczce.
+  @@unique([tripId, driverId])
 }
 
-model Booking {
-  id          String        @id @default(cuid())
-  ride        Ride          @relation(fields: [rideId], references: [id])
+model RideLeg {
+  id          String       @id @default(cuid())
+  ride        Ride         @relation(fields: [rideId], references: [id], onDelete: Cascade)
   rideId      String
-  passenger   User          @relation(fields: [passengerId], references: [id])
-  passengerId String
-  seatId      String // np. "rear-left"
-  status      BookingStatus @default(PENDING)
-  createdAt   DateTime      @default(now())
+  direction   LegDirection
+  /// Miejsce zbiórki na tym odcinku — na powrót bywa inne niż na dojazd.
+  origin      String
+  departureAt DateTime
+  arrivalAt   DateTime?
 
-  // Jedno miejsce w danym przejeździe może być zajęte tylko raz —
-  // baza pilnuje tego nawet przy równoczesnych rezerwacjach. Prośba blokuje
-  // miejsce tak samo jak potwierdzona rezerwacja.
+  @@unique([rideId, direction])
+}
+
+model SeatReservation {
+  id        String            @id @default(cuid())
+  ride      Ride              @relation(fields: [rideId], references: [id], onDelete: Cascade)
+  rideId    String
+  user      User              @relation(fields: [userId], references: [id])
+  userId    String
+  seatId    String
+  legs      ReservationLegs   @default(BOTH)
+  status    ReservationStatus @default(PENDING)
+  createdAt DateTime          @default(now())
+
+  // Świadomy kompromis: jeden fotel to jedna osoba na całą wycieczkę, nawet
+  // gdyby ktoś chciał zająć go tylko na powrót.
   @@unique([rideId, seatId])
-  // Jeden pasażer — jedno miejsce w danym przejeździe.
-  @@unique([rideId, passengerId])
+  @@unique([rideId, userId])
 }
 
-/// Wątek między pasażerem a kierowcą w kontekście jednego przejazdu.
-/// Przeżywa odrzucenie prośby, więc obie strony widzą, co się wydarzyło.
-model Conversation {
-  id          String    @id @default(cuid())
-  ride        Ride      @relation(fields: [rideId], references: [id])
-  rideId      String
-  passenger   User      @relation(fields: [passengerId], references: [id])
-  passengerId String
-  messages    Message[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+/// „Chcę jechać, ale nie ma jeszcze takiej wycieczki". Celowo bez powiązania
+/// z wycieczką — uczestnik wycieczki bez miejsca sam w sobie jest sygnałem
+/// zapotrzebowania.
+model RideRequest {
+  id          String        @id @default(cuid())
+  user        User          @relation(fields: [userId], references: [id])
+  userId      String
+  destination String
+  dateFrom    DateTime
+  dateTo      DateTime
+  seatsNeeded Int           @default(1)
+  note        String?
+  status      RequestStatus @default(OPEN)
+  createdAt   DateTime      @default(now())
+}
 
-  @@unique([rideId, passengerId])
+/// Wątek między uczestnikiem a kierowcą w kontekście wycieczki. Przeżywa
+/// odmowę i usunięcie auta, więc obie strony widzą, co się wydarzyło —
+/// dlatego adresem jest para osób w wycieczce, a nie rezerwacja czy auto.
+model Conversation {
+  id          String @id @default(cuid())
+  trip        Trip   @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  tripId      String
+  passenger   User   @relation("PassengerConversations", fields: [passengerId], references: [id])
+  passengerId String
+  driver      User   @relation("DriverConversations", fields: [driverId], references: [id])
+  driverId    String
+
+  messages  Message[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([tripId, passengerId, driverId])
 }
 
 model Message {

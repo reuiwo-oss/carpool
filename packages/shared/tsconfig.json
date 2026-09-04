@@ -10,5 +10,7 @@
     "rootDir": "src",
     "outDir": "dist/cjs"
   },
-  "include": ["src"]
+  "include": ["src"],
+  // Testy zostają w `src` obok kodu, ale nie mają czego szukać w `dist`.
+  "exclude": ["src/**/*.test.ts"]
 }

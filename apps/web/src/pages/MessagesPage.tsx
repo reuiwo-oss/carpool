@@ -40,7 +40,7 @@ export default function MessagesPage() {
       <div style={{ padding: '10px 20px 0' }}>
         <h1 style={{ fontSize: 30, margin: 0 }}>Wiadomości</h1>
         <p style={{ color: 'var(--color-neutral-700)', margin: '2px 0 0', fontSize: 14 }}>
-          Prośby o miejsce i ustalenia przed przejazdem.
+          Prośby o miejsce i ustalenia przed wyjazdem.
         </p>
       </div>
 
@@ -68,7 +68,7 @@ export default function MessagesPage() {
         )}
 
         {rows?.map((c) => {
-          const when = formatWhen(c.ride.departureAt);
+          const when = formatWhen(c.trip.startsAt);
           const unread = c.unreadCount > 0;
           return (
             <button
@@ -86,12 +86,12 @@ export default function MessagesPage() {
                   <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {c.withName}
                   </span>
-                  {c.bookingStatus === 'PENDING' && (
+                  {c.reservationStatus === 'PENDING' && (
                     <span className="tag tag-accent" style={{ fontSize: 10, padding: '2px 6px' }}>czeka</span>
                   )}
                 </div>
                 <div style={{ fontSize: 13, color: 'var(--color-neutral-700)', marginTop: 2 }}>
-                  {c.ride.origin} → {c.ride.destination} · {when.dayShort}
+                  {c.trip.title} · {when.dayShort}
                 </div>
                 <div style={{
                   fontSize: 13, marginTop: 4,

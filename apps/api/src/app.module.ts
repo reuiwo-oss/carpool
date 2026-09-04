@@ -1,12 +1,25 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
-import { RidesModule } from './rides/rides.module';
-import { BookingsModule } from './bookings/bookings.module';
+import { VehiclesModule } from './vehicles/vehicles.module';
+import { TripsModule } from './trips/trips.module';
+import { TripRidesModule } from './trip-rides/trip-rides.module';
+import { ReservationsModule } from './reservations/reservations.module';
+import { RideRequestsModule } from './ride-requests/ride-requests.module';
 import { ConversationsModule } from './conversations/conversations.module';
 import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule, UsersModule, RidesModule, BookingsModule, ConversationsModule],
+  imports: [
+    PrismaModule,
+    AuthModule,
+    UsersModule,
+    VehiclesModule,
+    TripsModule,
+    TripRidesModule,
+    ReservationsModule,
+    RideRequestsModule,
+    ConversationsModule,
+  ],
 })
 export class AppModule {}

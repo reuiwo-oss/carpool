@@ -33,10 +33,10 @@ export default function CommunityPage() {
             Jeszcze cicho
           </div>
           <div style={{ fontSize: 14, color: 'var(--color-neutral-700)', maxWidth: '26ch', textWrap: 'pretty' }}>
-            Pierwsze zdjęcie dodasz po odbytym przejeździe. Do tego czasu — znajdź auto.
+            Pierwsze zdjęcie dodasz po odbytej wycieczce. Do tego czasu — znajdź auto.
           </div>
           <button type="button" className="btn btn-secondary" style={{ marginTop: 8 }} onClick={() => navigate('/')}>
-            Szukaj przejazdu
+            Szukaj wycieczki
           </button>
         </div>
       </div>

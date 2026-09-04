@@ -1,5 +1,4 @@
-import { IsEmail, IsIn, IsString, MinLength } from 'class-validator';
-import type { Role } from '@carpool/shared';
+import { IsEmail, IsString, MinLength } from 'class-validator';
 
 export class RegisterDto {
   @IsEmail()
@@ -11,9 +10,6 @@ export class RegisterDto {
 
   @IsString()
   name!: string;
-
-  @IsIn(['DRIVER', 'PASSENGER'])
-  role!: Role;
 }
 
 export class LoginDto {

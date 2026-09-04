@@ -2,7 +2,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../features/auth/AuthContext';
 import TabBar from '../components/TabBar';
 
-/** Ekrany z paskiem zakładek — szczegóły i publikacja mają zamiast niego „wróć". */
+/** Ekrany z paskiem zakładek — szczegóły i formularze mają zamiast niego „wróć". */
 const TAB_ROUTES = ['/', '/community', '/mine', '/messages'];
 
 export default function Layout() {
@@ -13,7 +13,7 @@ export default function Layout() {
   return (
     <>
       <Outlet />
-      {showTabs && user && <TabBar role={user.role} />}
+      {showTabs && user && <TabBar />}
     </>
   );
 }
