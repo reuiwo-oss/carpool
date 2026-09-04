@@ -2,20 +2,25 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from './features/auth/AuthContext';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
-import SearchPage from './pages/SearchPage';
+import TripsListPage from './pages/TripsListPage';
+import TripDetailPage from './pages/TripDetailPage';
+import CreateTripPage from './pages/CreateTripPage';
+import MyTripsPage from './pages/MyTripsPage';
+import VehiclesPage from './pages/VehiclesPage';
+import RideRequestsPage from './pages/RideRequestsPage';
+import CreateRideRequestPage from './pages/CreateRideRequestPage';
 import CommunityPage from './pages/CommunityPage';
-import MinePage from './pages/MinePage';
 import MessagesPage from './pages/MessagesPage';
 import ThreadPage from './pages/ThreadPage';
-import RideDetailPage from './pages/RideDetailPage';
-import CreateRidePage from './pages/CreateRidePage';
 import Layout from './pages/Layout';
 
-/** Trasa dostępna tylko po zalogowaniu; opcjonalnie tylko dla danej roli */
-function Protected({ children, role }: { children: JSX.Element; role?: 'DRIVER' | 'PASSENGER' }) {
+/**
+ * Trasa dostępna po zalogowaniu. Bez wariantu „tylko dla roli" — rola nie jest
+ * cechą konta, tylko wynikiem udziału w konkretnej wycieczce.
+ */
+function Protected({ children }: { children: JSX.Element }) {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
-  if (role && user.role !== role) return <Navigate to="/" replace />;
   return children;
 }
 
@@ -25,13 +30,16 @@ export default function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route element={<Layout />}>
-        <Route path="/" element={<Protected><SearchPage /></Protected>} />
+        <Route path="/" element={<Protected><TripsListPage /></Protected>} />
         <Route path="/community" element={<Protected><CommunityPage /></Protected>} />
-        <Route path="/mine" element={<Protected><MinePage /></Protected>} />
+        <Route path="/mine" element={<Protected><MyTripsPage /></Protected>} />
         <Route path="/messages" element={<Protected><MessagesPage /></Protected>} />
         <Route path="/messages/:id" element={<Protected><ThreadPage /></Protected>} />
-        <Route path="/rides/new" element={<Protected role="DRIVER"><CreateRidePage /></Protected>} />
-        <Route path="/rides/:id" element={<Protected><RideDetailPage /></Protected>} />
+        <Route path="/trips/new" element={<Protected><CreateTripPage /></Protected>} />
+        <Route path="/trips/:id" element={<Protected><TripDetailPage /></Protected>} />
+        <Route path="/vehicles" element={<Protected><VehiclesPage /></Protected>} />
+        <Route path="/requests" element={<Protected><RideRequestsPage /></Protected>} />
+        <Route path="/requests/new" element={<Protected><CreateRideRequestPage /></Protected>} />
       </Route>
     </Routes>
   );

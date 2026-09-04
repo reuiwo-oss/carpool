@@ -16,7 +16,9 @@ export class AuthService {
       data: {
         email: dto.email,
         name: dto.name,
-        role: dto.role,
+        // Kolumna jest jeszcze wymagana w bazie, ale nic już z niej nie wynika —
+        // znika w etapie 6. Konta bez wskazanej roli dostają obojętną wartość.
+        role: dto.role ?? 'PASSENGER',
         passwordHash: await bcrypt.hash(dto.password, 10),
       },
     });

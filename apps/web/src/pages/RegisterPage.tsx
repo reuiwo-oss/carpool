@@ -1,29 +1,18 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { Role } from '@carpool/shared';
 import { useAuth } from '../features/auth/AuthContext';
 import { ArmchairIcon, CarIcon } from '../components/icons';
 import { BackButton, Corners, PrimaryButton } from '../components/ui';
 
-const ROLE_OPTIONS: { role: Role; title: string; body: string; icon: React.ReactNode }[] = [
-  {
-    role: 'PASSENGER',
-    title: 'Jestem pasażerem',
-    body: 'Dołączam do przejazdów i wybieram miejsce w aucie.',
-    icon: <ArmchairIcon size={28} />,
-  },
-  {
-    role: 'DRIVER',
-    title: 'Jestem kierowcą',
-    body: 'Oferuję miejsca w swoim aucie i widzę, kto jedzie.',
-    icon: <CarIcon size={28} />,
-  },
-];
-
+/**
+ * Rejestracja bez wyboru roli. Kierowcą jest ten, kto zgłosi auto do wycieczki,
+ * pasażerem ten, kto zajmie fotel — i jedno nie wyklucza drugiego, więc
+ * pytanie „kim jesteś?" straciło sens.
+ */
 export default function RegisterPage() {
   const { register } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ email: '', password: '', name: '', role: 'PASSENGER' as Role });
+  const [form, setForm] = useState({ email: '', password: '', name: '' });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -68,52 +57,33 @@ export default function RegisterPage() {
         </div>
       </div>
 
-      <div style={{ fontSize: 12, color: 'var(--color-neutral-700)', margin: '26px 0 10px' }} id="role-caption">
-        Jak chcesz podróżować? <span style={{ color: 'var(--color-neutral-500)' }}>To ustawia cały interfejs.</span>
+      {/*
+        Zamiast wyboru roli — informacja, że wyboru nie ma. Ekran zostaje
+        na tyle pełny, że nie wygląda na okrojony formularz.
+      */}
+      <div className="blueprint" style={{
+        margin: '26px 6px 0', padding: '16px 16px', display: 'flex', flexDirection: 'column', gap: 12,
+      }}>
+        <Corners />
+        <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 20, lineHeight: 1.1 }}>
+          Jedno konto, obie strony
+        </div>
+        <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+          <CarIcon size={24} />
+          <div style={{ fontSize: 13, color: 'var(--color-neutral-700)' }}>
+            Zgłoś auto do wycieczki, a będziesz w niej kierowcą.
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+          <ArmchairIcon size={24} />
+          <div style={{ fontSize: 13, color: 'var(--color-neutral-700)' }}>
+            Zajmij fotel w cudzym aucie, a będziesz pasażerem. W następnej wycieczce może być odwrotnie.
+          </div>
+        </div>
       </div>
 
-      {/* Semantyka radia, nie przycisków — wybór jest jeden i zmienia cały interfejs. */}
-      <div role="radiogroup" aria-labelledby="role-caption"
-        style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, margin: '0 6px' }}>
-        {ROLE_OPTIONS.map((opt) => {
-          const selected = form.role === opt.role;
-          return (
-            <button
-              key={opt.role}
-              type="button"
-              role="radio"
-              aria-checked={selected}
-              className="blueprint"
-              onClick={() => setForm({ ...form, role: opt.role })}
-              style={{
-                textAlign: 'left',
-                cursor: 'pointer',
-                padding: '16px 14px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 12,
-                minHeight: 150,
-                fontFamily: 'var(--font-body)',
-                background: selected ? 'var(--color-accent)' : 'transparent',
-                color: selected ? 'var(--color-bg)' : 'var(--color-text)',
-                borderColor: selected ? 'var(--color-accent)' : 'var(--color-divider)',
-              }}
-            >
-              <Corners />
-              {opt.icon}
-              <div>
-                <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 22, lineHeight: 1.1 }}>
-                  {opt.title}
-                </div>
-                <div style={{ fontSize: 13, opacity: 0.8, marginTop: 4 }}>{opt.body}</div>
-              </div>
-            </button>
-          );
-        })}
-      </div>
-
-      <PrimaryButton type="submit" disabled={busy} style={{ marginTop: 28 }}>
-        {form.role === 'DRIVER' ? 'Załóż konto kierowcy' : 'Załóż konto pasażera'}
+      <PrimaryButton type="submit" disabled={busy} style={{ marginTop: 24 }}>
+        Załóż konto
       </PrimaryButton>
 
       {error && (
