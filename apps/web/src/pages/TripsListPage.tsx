@@ -5,7 +5,7 @@ import { listTrips } from '../features/trips/tripsApi';
 import { useAuth } from '../features/auth/AuthContext';
 import SeatMap from '../features/seat-picker/SeatMap';
 import { BellIcon, PlusIcon } from '../components/icons';
-import { Avatar, Corners, PrimaryButton } from '../components/ui';
+import { Avatar, Corners, LoadError, PrimaryButton } from '../components/ui';
 import { formatWhen, nextDayChips, plural } from '../lib/format';
 
 /** Schemat do stanu pustego: domyślne wnętrze z samymi wolnymi fotelami. */
@@ -20,6 +20,7 @@ export default function TripsListPage() {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const [trips, setTrips] = useState<TripSummary[] | null>(null);
+  const [loadError, setLoadError] = useState('');
 
   // Stan wyszukiwania mieszka w URL — wynik da się odświeżyć i wysłać linkiem.
   const to = params.get('to') ?? '';
@@ -31,9 +32,12 @@ export default function TripsListPage() {
     setParams(Object.fromEntries(clean), { replace: true });
   };
 
-  useEffect(() => {
-    listTrips().then(setTrips).catch(() => setTrips([]));
-  }, []);
+  const load = () => {
+    setLoadError('');
+    listTrips().then(setTrips).catch((e) => setLoadError((e as Error).message));
+  };
+
+  useEffect(load, []);
 
   const chips = useMemo(() => nextDayChips(3), []);
 
@@ -77,7 +81,11 @@ export default function TripsListPage() {
       </div>
 
       <div className="screen-scroll" style={{ padding: '18px 0 90px' }}>
-        {trips === null ? (
+        {loadError ? (
+          <div style={{ padding: '0 18px' }}>
+            <LoadError message={loadError} onRetry={load} />
+          </div>
+        ) : trips === null ? (
           <p style={{ padding: '0 20px', color: 'var(--color-neutral-700)' }}>Wczytywanie wycieczek…</p>
         ) : results.length > 0 ? (
           <>

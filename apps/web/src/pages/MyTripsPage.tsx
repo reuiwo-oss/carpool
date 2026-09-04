@@ -5,19 +5,21 @@ import { listMyTrips } from '../features/trips/tripsApi';
 import { RoleBadges } from '../features/trips/roles';
 import { useAuth } from '../features/auth/AuthContext';
 import { CarIcon } from '../components/icons';
-import { Avatar, Corners } from '../components/ui';
+import { Avatar, Corners, LoadError } from '../components/ui';
 import { formatWhen, plural } from '../lib/format';
 
 export default function MyTripsPage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [trips, setTrips] = useState<MyTrips | null>(null);
+  const [loadError, setLoadError] = useState('');
 
-  useEffect(() => {
-    listMyTrips()
-      .then(setTrips)
-      .catch(() => setTrips({ upcoming: [], past: [] }));
-  }, []);
+  const load = () => {
+    setLoadError('');
+    listMyTrips().then(setTrips).catch((e) => setLoadError((e as Error).message));
+  };
+
+  useEffect(load, []);
 
   const card = (trip: TripSummary, past: boolean) => {
     const starts = formatWhen(trip.startsAt);
@@ -68,7 +70,8 @@ export default function MyTripsPage() {
           Moje auta
         </button>
 
-        {trips === null && <p style={{ color: 'var(--color-neutral-700)' }}>Wczytywanie…</p>}
+        {loadError && <LoadError message={loadError} onRetry={load} />}
+        {!loadError && trips === null && <p style={{ color: 'var(--color-neutral-700)' }}>Wczytywanie…</p>}
 
         {trips && trips.upcoming.length === 0 && trips.past.length === 0 && (
           <div className="blueprint" style={{

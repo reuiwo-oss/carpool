@@ -8,7 +8,7 @@ import {
 } from '@carpool/shared';
 import { createVehicle, listVehicles } from './vehiclesApi';
 import SeatMap from '../seat-picker/SeatMap';
-import { Corners } from '../../components/ui';
+import { Corners, LoadError } from '../../components/ui';
 
 const INTERIOR_KEYS = Object.keys(INTERIORS);
 
@@ -114,19 +114,25 @@ export default function VehiclePicker({
 }) {
   const [vehicles, setVehicles] = useState<Vehicle[] | null>(null);
   const [adding, setAdding] = useState(false);
+  const [loadError, setLoadError] = useState('');
 
-  useEffect(() => {
+  const load = () => {
+    setLoadError('');
     listVehicles()
       .then((rows) => {
         setVehicles(rows);
         // Pusty garaż od razu otwiera formularz — inaczej ekran wygląda
-        // na zepsuty: lista aut bez ani jednego auta.
+        // na zepsuty: lista aut bez ani jednego auta. Tylko po udanym
+        // wczytaniu: nieosiągalne API to nie jest pusty garaż.
         if (rows.length === 0) setAdding(true);
         else if (!value) onChange(rows[0].id);
       })
-      .catch(() => setVehicles([]));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+      .catch((e) => setLoadError((e as Error).message));
+  };
+
+  useEffect(load, []);
+
+  if (loadError) return <LoadError message={loadError} onRetry={load} />;
 
   if (vehicles === null) {
     return <p style={{ color: 'var(--color-neutral-700)', fontSize: 14 }}>Wczytywanie garażu…</p>;

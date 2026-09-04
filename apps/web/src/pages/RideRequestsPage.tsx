@@ -9,7 +9,7 @@ import {
 import { useAuth } from '../features/auth/AuthContext';
 import { useToast } from '../components/ToastContext';
 import { BellIcon, PlusIcon } from '../components/icons';
-import { Avatar, BackButton, Corners, PrimaryButton } from '../components/ui';
+import { Avatar, BackButton, Corners, LoadError, PrimaryButton } from '../components/ui';
 import { formatWhen, plural } from '../lib/format';
 
 /**
@@ -21,11 +21,13 @@ export default function RideRequestsPage() {
   const navigate = useNavigate();
   const say = useToast();
   const [requests, setRequests] = useState<RideRequest[] | null>(null);
+  const [loadError, setLoadError] = useState('');
 
-  const load = () => listRideRequests().then(setRequests).catch(() => setRequests([]));
-  useEffect(() => {
-    load();
-  }, []);
+  const load = () => {
+    setLoadError('');
+    listRideRequests().then(setRequests).catch((e) => setLoadError((e as Error).message));
+  };
+  useEffect(load, []);
 
   const act = async (action: Promise<unknown>, done: string) => {
     try {
@@ -50,9 +52,10 @@ export default function RideRequestsPage() {
           kto planuje wycieczkę.
         </p>
 
-        {requests === null && <p style={{ color: 'var(--color-neutral-700)' }}>Wczytywanie…</p>}
+        {loadError && <LoadError message={loadError} onRetry={load} />}
+        {!loadError && requests === null && <p style={{ color: 'var(--color-neutral-700)' }}>Wczytywanie…</p>}
 
-        {requests?.length === 0 && (
+        {!loadError && requests?.length === 0 && (
           <div className="blueprint" style={{
             padding: '26px 20px', textAlign: 'center', margin: 6,
             display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center',

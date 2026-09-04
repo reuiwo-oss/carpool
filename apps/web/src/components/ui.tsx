@@ -70,6 +70,31 @@ export function BlueprintCard({
   );
 }
 
+/**
+ * Nieudane wczytanie danych. Osobny stan, bo pusta lista i brak odpowiedzi
+ * wyglądają identycznie, a znaczą coś zupełnie innego — „nikt jeszcze nie
+ * jedzie" kontra „serwer nie odpowiada".
+ */
+export function LoadError({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="blueprint" style={{
+      padding: '20px 18px', margin: 6, display: 'flex', flexDirection: 'column',
+      alignItems: 'center', textAlign: 'center', gap: 8, borderColor: 'var(--color-accent)',
+    }}>
+      <Corners />
+      <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 20, lineHeight: 1.1 }}>
+        Nie udało się wczytać
+      </div>
+      <div role="alert" style={{ fontSize: 14, color: 'var(--color-neutral-700)', textWrap: 'pretty' }}>
+        {message}
+      </div>
+      <button type="button" className="btn btn-secondary" style={{ marginTop: 4 }} onClick={onRetry}>
+        Spróbuj ponownie
+      </button>
+    </div>
+  );
+}
+
 /** Główna akcja ekranu — jedyny pełny obiekt na planszy. */
 export function PrimaryButton({
   children,

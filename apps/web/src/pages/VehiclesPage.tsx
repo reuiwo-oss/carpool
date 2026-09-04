@@ -5,18 +5,20 @@ import { deleteVehicle, listVehicles } from '../features/vehicles/vehiclesApi';
 import { VehicleForm, vehicleLabel } from '../features/vehicles/VehiclePicker';
 import { useToast } from '../components/ToastContext';
 import SeatMap from '../features/seat-picker/SeatMap';
-import { BackButton, Corners } from '../components/ui';
+import { BackButton, Corners, LoadError } from '../components/ui';
 
 export default function VehiclesPage() {
   const navigate = useNavigate();
   const say = useToast();
   const [vehicles, setVehicles] = useState<Vehicle[] | null>(null);
   const [adding, setAdding] = useState(false);
+  const [loadError, setLoadError] = useState('');
 
-  const load = () => listVehicles().then(setVehicles).catch(() => setVehicles([]));
-  useEffect(() => {
-    load();
-  }, []);
+  const load = () => {
+    setLoadError('');
+    listVehicles().then(setVehicles).catch((e) => setLoadError((e as Error).message));
+  };
+  useEffect(load, []);
 
   const remove = async (vehicle: Vehicle) => {
     try {
@@ -41,9 +43,12 @@ export default function VehiclesPage() {
           więc późniejsza zmiana tutaj nie przestawia miejsc ludziom, którzy już jadą.
         </p>
 
-        {vehicles === null && <p style={{ color: 'var(--color-neutral-700)' }}>Wczytywanie garażu…</p>}
+        {loadError && <LoadError message={loadError} onRetry={load} />}
+        {!loadError && vehicles === null && (
+          <p style={{ color: 'var(--color-neutral-700)' }}>Wczytywanie garażu…</p>
+        )}
 
-        {vehicles?.length === 0 && !adding && (
+        {!loadError && vehicles?.length === 0 && !adding && (
           <div className="blueprint" style={{
             padding: '26px 20px', textAlign: 'center', margin: 6,
             display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center',
