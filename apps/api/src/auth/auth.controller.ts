@@ -6,7 +6,7 @@ import { LoginDto, RegisterDto } from './auth.dto';
 export class AuthController {
   constructor(private auth: AuthService) {}
 
-  /** Rejestracja — bez wyboru roli, tę wylicza się z udziału w wycieczce */
+  /** Rejestracja. Roli nie ma — wylicza się z udziału w konkretnej wycieczce. */
   @Post('register')
   register(@Body() dto: RegisterDto) {
     return this.auth.register(dto);

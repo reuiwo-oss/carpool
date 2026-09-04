@@ -66,16 +66,24 @@ export const updateLeg = (
 export const removeTripRide = (tripId: string, rideId: string) =>
   api(`/trips/${tripId}/rides/${rideId}`, { method: 'DELETE' });
 
+/** `note` trafia jako pierwsza wiadomość w wątku z kierowcą. */
 export const reserveSeat = (
   tripId: string,
   rideId: string,
   seatId: string,
-  legs?: ReservationLegs,
+  opts: { legs?: ReservationLegs; note?: string } = {},
 ) =>
-  api<{ id: string }>(`/trips/${tripId}/rides/${rideId}/reservations`, {
-    method: 'POST',
-    body: JSON.stringify({ seatId, ...(legs ? { legs } : {}) }),
-  });
+  api<{ id: string; conversationId: string }>(
+    `/trips/${tripId}/rides/${rideId}/reservations`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        seatId,
+        ...(opts.legs ? { legs: opts.legs } : {}),
+        ...(opts.note ? { note: opts.note } : {}),
+      }),
+    },
+  );
 
 export const acceptReservation = (id: string) =>
   api(`/reservations/${id}/accept`, { method: 'POST' });

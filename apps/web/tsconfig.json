@@ -9,9 +9,5 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["src"],
-  // Ekrany starego modelu czekają na etap 6 nietknięte. Nie prowadzi do nich
-  // żadna trasa i odwołują się do roli konta, której nie ma już w sesji —
-  // dlatego stoją poza kompilacją, zamiast być przepisywane na chwilę.
-  "exclude": ["src/pages/legacy"]
+  "include": ["src"]
 }

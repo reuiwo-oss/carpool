@@ -43,6 +43,7 @@ export default function TripDetailPage() {
   const [trip, setTrip] = useState<Trip | null>(null);
   const [error, setError] = useState('');
   const [selected, setSelected] = useState<{ rideId: string; seatId: string } | null>(null);
+  const [note, setNote] = useState('');
   const [addingCar, setAddingCar] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -285,13 +286,23 @@ export default function TripDetailPage() {
                       Miejsce na oba odcinki. {ride.driverName} potwierdza każdą prośbę.
                     </div>
                   </div>
+                  <div className="field">
+                    <label htmlFor="seat-note">Pytania lub uwagi (opcjonalnie)</label>
+                    <textarea id="seat-note" className="input" maxLength={1000}
+                      placeholder="np. Będę miał duży plecak — zmieści się?"
+                      value={note} onChange={(e) => setNote(e.target.value)} />
+                  </div>
                   <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                    <button type="button" className="btn btn-ghost" onClick={() => setSelected(null)}>
+                    <button type="button" className="btn btn-ghost"
+                      onClick={() => { setSelected(null); setNote(''); }}>
                       Anuluj
                     </button>
                     <button type="button" className="btn btn-primary" disabled={busy}
                       onClick={() => run(
-                        () => reserveSeat(trip.id, ride.id, chosenSeat.id),
+                        async () => {
+                          await reserveSeat(trip.id, ride.id, chosenSeat.id, { note: note.trim() || undefined });
+                          setNote('');
+                        },
                         `Prośba wysłana: ${chosenSeat.label}.`,
                       )}>
                       Zarezerwuj miejsce

@@ -236,7 +236,7 @@ export class TripsService {
   async leave(tripId: string, userId: string) {
     const participant = await this.access.assertParticipant(tripId, userId);
 
-    const ownRides = await this.prisma.tripRide.count({ where: { tripId, driverId: userId } });
+    const ownRides = await this.prisma.ride.count({ where: { tripId, driverId: userId } });
     if (ownRides > 0) {
       throw new BadRequestException('Najpierw wypisz z wycieczki swoje auto');
     }
@@ -255,7 +255,7 @@ export class TripsService {
     // Miejsce zwalnia się razem z uczestnictwem — inaczej fotel zostałby
     // zajęty przez kogoś, kogo nie ma już w wycieczce.
     await this.prisma.$transaction([
-      this.prisma.tripSeatReservation.deleteMany({ where: { userId, ride: { tripId } } }),
+      this.prisma.seatReservation.deleteMany({ where: { userId, ride: { tripId } } }),
       this.prisma.tripParticipant.delete({ where: { tripId_userId: { tripId, userId } } }),
     ]);
     return { ok: true };

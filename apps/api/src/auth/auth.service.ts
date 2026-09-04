@@ -16,13 +16,10 @@ export class AuthService {
       data: {
         email: dto.email,
         name: dto.name,
-        // Kolumna jest jeszcze wymagana w bazie, ale nic już z niej nie wynika —
-        // znika w etapie 6. Konta bez wskazanej roli dostają obojętną wartość.
-        role: dto.role ?? 'PASSENGER',
         passwordHash: await bcrypt.hash(dto.password, 10),
       },
     });
-    return this.issueToken(user.id, user.email, user.role, user.name);
+    return this.issueToken(user.id, user.email, user.name);
   }
 
   async login(dto: LoginDto) {
@@ -30,13 +27,14 @@ export class AuthService {
     if (!user || !(await bcrypt.compare(dto.password, user.passwordHash))) {
       throw new UnauthorizedException('Nieprawidłowy e-mail lub hasło');
     }
-    return this.issueToken(user.id, user.email, user.role, user.name);
+    return this.issueToken(user.id, user.email, user.name);
   }
 
-  private issueToken(sub: string, email: string, role: string, name: string) {
+  /** Token nie niesie roli — ta wynika z udziału w konkretnej wycieczce. */
+  private issueToken(sub: string, email: string, name: string) {
     return {
-      accessToken: this.jwt.sign({ sub, email, role }),
-      user: { id: sub, email, role, name },
+      accessToken: this.jwt.sign({ sub, email }),
+      user: { id: sub, email, name },
     };
   }
 }

@@ -33,7 +33,7 @@ export class TripAccessService {
   }
 
   async assertRideDriver(rideId: string, userId: string) {
-    const ride = await this.prisma.tripRide.findUnique({ where: { id: rideId } });
+    const ride = await this.prisma.ride.findUnique({ where: { id: rideId } });
     if (!ride) throw new NotFoundException('To auto nie istnieje');
     if (ride.driverId !== userId) throw new ForbiddenException('To nie jest twoje auto');
     return ride;

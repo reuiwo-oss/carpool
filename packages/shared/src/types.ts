@@ -3,8 +3,6 @@
  * Jedno źródło prawdy dla kształtu danych.
  */
 
-export type Role = 'DRIVER' | 'PASSENGER';
-
 /**
  * FREE / TAKEN / PENDING / DRIVER przychodzą z API. MINE wyliczamy po stronie
  * klienta dla potwierdzonego miejsca zalogowanego pasażera.
@@ -13,9 +11,6 @@ export type Role = 'DRIVER' | 'PASSENGER';
  * który ma zdecydować. Dla reszty miejsce jest po prostu zajęte.
  */
 export type SeatStatus = 'FREE' | 'TAKEN' | 'PENDING' | 'DRIVER' | 'MINE';
-
-/** Prośba czeka na kierowcę; zaakceptowana jest rezerwacją. */
-export type BookingStatus = 'PENDING' | 'ACCEPTED';
 
 /** Zdarzenia rysują się w wątku inaczej niż zwykła wiadomość. */
 export type MessageKind = 'TEXT' | 'REQUEST' | 'ACCEPTED' | 'REJECTED' | 'CANCELLED';
@@ -28,29 +23,8 @@ export interface Seat {
   x: number;
   y: number;
   status: SeatStatus;
-  /** Imię osoby na tym miejscu — API podaje je wyłącznie kierowcy przejazdu. */
+  /** Imię osoby na tym miejscu — API podaje je uczestnikom wycieczki. */
   who?: string;
-}
-
-export interface RideOffer {
-  id: string;
-  driverId: string;
-  driverName: string;
-  carModel: string;
-  seatCount: number; // miejsca dla pasażerów (bez kierowcy)
-  origin: string;
-  destination: string;
-  departureAt: string; // ISO date
-  seats: Seat[];
-}
-
-export interface Booking {
-  id: string;
-  rideId: string;
-  passengerId: string;
-  seatId: string;
-  status: BookingStatus;
-  createdAt: string;
 }
 
 export interface Message {
@@ -66,22 +40,21 @@ export interface Message {
   createdAt: string;
 }
 
-/** Wątek pasażer ↔ kierowca w kontekście jednego przejazdu. */
+/** Wątek uczestnik ↔ kierowca w kontekście jednej wycieczki. */
 export interface Conversation {
   id: string;
-  rideId: string;
+  tripId: string;
   /** Druga strona rozmowy z perspektywy pytającego. */
   withName: string;
-  ride: {
+  trip: {
     id: string;
-    origin: string;
+    title: string;
     destination: string;
-    departureAt: string;
-    carModel: string;
+    startsAt: string;
   };
-  /** Stan prośby, o ile wciąż istnieje. */
-  bookingStatus: BookingStatus | null;
-  bookingId: string | null;
+  /** Stan rezerwacji, o ile wciąż istnieje — odmowa i rezygnacja ją kasują. */
+  reservationStatus: ReservationStatus | null;
+  reservationId: string | null;
   seatId: string | null;
   seatLabel: string | null;
   lastMessage: Message | null;
@@ -89,15 +62,15 @@ export interface Conversation {
   updatedAt: string;
 }
 
+/** Zalogowany użytkownik. Bez roli — ta wynika z udziału w wycieczce. */
 export interface AuthUser {
   id: string;
   email: string;
   name: string;
-  role: Role;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Model wycieczkowy
+// Wycieczka, auta, rezerwacje
 //
 // Kształty spisane z tego, co zwraca API: daty jako ISO, relacje spłaszczone
 // do tego, co ekran faktycznie rysuje. Odpowiedniki enumów z bazy są uniami
@@ -110,7 +83,7 @@ export type LegDirection = 'OUTBOUND' | 'RETURN';
 export type ReservationLegs = 'BOTH' | 'OUTBOUND_ONLY' | 'RETURN_ONLY';
 export type RequestStatus = 'OPEN' | 'FULFILLED' | 'EXPIRED';
 
-/** Jak w starym `Booking`: prośba czeka na kierowcę, akceptacja ją domyka. */
+/** Prośba czeka na kierowcę auta; akceptacja ją domyka. */
 export type ReservationStatus = 'PENDING' | 'ACCEPTED';
 
 /**

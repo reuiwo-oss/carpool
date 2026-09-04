@@ -29,7 +29,7 @@ export class TripRidesService {
       throw new ForbiddenException('Do wycieczki zgłaszasz tylko własne auto');
     }
 
-    const already = await this.prisma.tripRide.findUnique({
+    const already = await this.prisma.ride.findUnique({
       where: { tripId_driverId: { tripId, driverId: userId } },
     });
     if (already) throw new ConflictException('Masz już auto w tej wycieczce');
@@ -37,7 +37,7 @@ export class TripRidesService {
     this.assertLegsMakeSense(dto);
 
     return this.prisma.$transaction(async (tx) => {
-      const ride = await tx.tripRide.create({
+      const ride = await tx.ride.create({
         data: {
           tripId,
           driverId: userId,
@@ -76,7 +76,7 @@ export class TripRidesService {
     const ride = await this.access.assertRideDriver(rideId, userId);
     if (ride.tripId !== tripId) throw new NotFoundException('To auto nie jedzie w tej wycieczce');
 
-    const leg = await this.prisma.tripRideLeg.findUnique({
+    const leg = await this.prisma.rideLeg.findUnique({
       where: { rideId_direction: { rideId, direction: direction as LegDirection } },
     });
     if (!leg) throw new NotFoundException('Ten odcinek nie istnieje');
@@ -88,7 +88,7 @@ export class TripRidesService {
     }
 
     return this.prisma.$transaction(async (tx) => {
-      const updated = await tx.tripRideLeg.update({
+      const updated = await tx.rideLeg.update({
         where: { id: leg.id },
         data: {
           ...(dto.origin !== undefined ? { origin: dto.origin.trim() } : {}),
@@ -103,14 +103,14 @@ export class TripRidesService {
 
   /** Kierowca wypisuje własne auto; organizator może wypisać każde. */
   async remove(userId: string, tripId: string, rideId: string) {
-    const ride = await this.prisma.tripRide.findUnique({ where: { id: rideId } });
+    const ride = await this.prisma.ride.findUnique({ where: { id: rideId } });
     if (!ride) throw new NotFoundException('To auto nie istnieje');
     if (ride.tripId !== tripId) throw new NotFoundException('To auto nie jedzie w tej wycieczce');
     if (ride.driverId !== userId) await this.access.assertOrganizer(tripId, userId);
 
     await this.prisma.$transaction(async (tx) => {
       // Odcinki i rezerwacje schodzą kaskadą (onDelete: Cascade w schemacie).
-      await tx.tripRide.delete({ where: { id: rideId } });
+      await tx.ride.delete({ where: { id: rideId } });
       await recomputeTripSchedule(tx, tripId);
     });
     return { ok: true };

@@ -1,8 +1,9 @@
 
-# Carpool — wspólne przejazdy jednym samochodem
+# Carpool — wspólne wycieczki jednym samochodem
 
-Szkielet aplikacji: kierowca tworzy ofertę przejazdu (model auta, liczba miejsc),
-pasażer graficznie wybiera wolne miejsce w samochodzie.
+Uczestnicy organizują wspólny wyjazd, zgłaszają do niego swoje auta i graficznie
+wybierają wolne miejsca. Kto jest kierowcą, a kto pasażerem, wynika z tego, co
+kto wniósł do konkretnej wycieczki — nie z ustawienia konta.
 
 ## Struktura monorepo
 
@@ -58,6 +59,8 @@ npm run build:shared                              # jednorazowy build pakietu sh
 npm run build --workspace packages/shared -- --watch   # watch przy pracy nad shared
 npm run build --workspace apps/api                # produkcyjny build API
 npm run prisma:generate --workspace apps/api      # regeneracja klienta Prisma po zmianie schematu
+npm test                                          # testy jednostkowe pakietu shared
+node docs/weryfikacja-modelu-wycieczkowego.mjs    # scenariusz end-to-end na działającym API
 ```
 
 > Przy edycji `packages/shared` trzymaj watch w osobnym terminalu — bez tego API
@@ -67,9 +70,47 @@ npm run prisma:generate --workspace apps/api      # regeneracja klienta Prisma p
 > żądanie `/api/*` — tak proxy Vite sygnalizuje nieosiągalny backend.
 > Szczegóły: [docs/bugfix-2026-09-01-rejestracja-500.md](docs/bugfix-2026-09-01-rejestracja-500.md).
 
-## Role
+## Model danych
 
-- **DRIVER** — tworzy i zarządza ofertami przejazdów
-- **PASSENGER** — przegląda oferty, rezerwuje miejsce na schemacie auta
+Jednostką nie jest przejazd, tylko **wycieczka** — wspólny wyjazd w obie strony
+tym samym składem.
 
-Użytkownik wybiera rolę przy rejestracji; docelowo jedno konto będzie mogło mieć obie role.
+- **Wycieczka** (`Trip`) — cel, opis, widoczność i status. Ramy czasowe
+  (`startsAt`, `endsAt`) nie są przepisywane z formularza: wyliczają się
+  z odcinków aut, więc wycieczka zaczyna się, gdy rusza pierwsze auto, a kończy,
+  gdy wróci ostatnie.
+- **Uczestnik** (`TripParticipant`) — kto jest w wycieczce. Jedyne zapisane
+  pole poza datą dołączenia to `isOrganizer`.
+- **Auto** (`Ride`) — samochód zgłoszony do wycieczki, jeden na uczestnika.
+  Każdy uczestnik może dodać własny; organizator niczego nie zatwierdza.
+  W chwili zgłoszenia auto kopiuje układ foteli z pojazdu
+  (`seatLayoutSnapshot`), żeby późniejsza zmiana w garażu nie przestawiała
+  miejsc ludziom, którzy już je zajęli.
+- **Odcinek** (`RideLeg`) — `OUTBOUND` i `RETURN`: godzina i miejsce zbiórki
+  osobno na dojazd i na powrót. Auto należy do całej wycieczki, nie do
+  pojedynczego kursu, więc jeden samochód ma dwa odcinki zamiast dwóch
+  osobnych przejazdów.
+- **Rezerwacja** (`SeatReservation`) — fotel w konkretnym aucie, domyślnie na
+  oba odcinki. Prośba blokuje miejsce od razu, ale pasażer jedzie dopiero po
+  potwierdzeniu przez kierowcę tego auta.
+- **Pojazd** (`Vehicle`) — garaż użytkownika, niezależny od wycieczek.
+- **Prośba o przejazd** (`RideRequest`) — „chcę jechać, ale nie ma jeszcze
+  takiej wycieczki". Celowo bez powiązania z wycieczką: uczestnik wycieczki
+  bez miejsca sam w sobie jest sygnałem zapotrzebowania.
+
+### Role wyliczane
+
+Konto nie ma roli. Rola dotyczy zawsze **konkretnej wycieczki** i wynika
+z danych — liczy ją `deriveParticipantRoles` z pakietu `shared`, tą samą
+funkcją po stronie API i frontendu:
+
+| rola | skąd się bierze |
+|---|---|
+| `ORGANIZER` | `isOrganizer` na uczestnictwie |
+| `DRIVER` | ma w tej wycieczce auto |
+| `PASSENGER` | ma rezerwację miejsca |
+| `LOOKING_FOR_SEAT` | jest uczestnikiem, ale nie ma ani auta, ani fotela |
+
+Role się nie wykluczają: organizator, który zgłosił własne auto, jest
+jednocześnie `ORGANIZER` i `DRIVER`. Ta sama osoba bywa kierowcą w jednej
+wycieczce i pasażerem w następnej — dlatego rejestracja o rolę nie pyta.

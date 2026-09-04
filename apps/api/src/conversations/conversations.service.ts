@@ -2,18 +2,22 @@ import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/commo
 import { Seat } from '@carpool/shared';
 import { PrismaService } from '../prisma/prisma.service';
 
-/** Wątek widzi tylko jego pasażer i kierowca przejazdu. */
+/** Wątek widzą tylko jego dwie strony: uczestnik i kierowca. */
 const participantOf = (userId: string) => ({
-  OR: [{ passengerId: userId }, { ride: { driverId: userId } }],
+  OR: [{ passengerId: userId }, { driverId: userId }],
 });
+
+const tripSummary = {
+  select: { id: true, title: true, destination: true, startsAt: true },
+} as const;
 
 @Injectable()
 export class ConversationsService {
   constructor(private prisma: PrismaService) {}
 
-  private seatLabel(seatLayout: unknown, seatId: string | null) {
+  private seatLabel(snapshot: unknown, seatId: string | null) {
     if (!seatId) return null;
-    return (seatLayout as Seat[]).find((s) => s.id === seatId)?.label ?? seatId;
+    return (snapshot as Seat[]).find((s) => s.id === seatId)?.label ?? seatId;
   }
 
   /** Liczba nieprzeczytanych — zasila kulkę przy ikonce Wiadomości. */
@@ -29,12 +33,38 @@ export class ConversationsService {
       .then((count) => ({ count }));
   }
 
+  /**
+   * Rezerwacja dla pary (wycieczka, uczestnik, kierowca) — czyli miejsce
+   * pasażera w aucie tego kierowcy. Może już nie istnieć: odmowa i rezygnacja
+   * kasują wiersz, a wątek zostaje.
+   */
+  private async reservationsFor(
+    keys: { tripId: string; passengerId: string; driverId: string }[],
+  ) {
+    const found =
+      keys.length === 0
+        ? []
+        : await this.prisma.seatReservation.findMany({
+            where: {
+              OR: keys.map((k) => ({
+                userId: k.passengerId,
+                ride: { tripId: k.tripId, driverId: k.driverId },
+              })),
+            },
+            include: {
+              ride: { select: { tripId: true, driverId: true, seatLayoutSnapshot: true } },
+            },
+          });
+    return new Map(found.map((r) => [`${r.ride.tripId}:${r.userId}:${r.ride.driverId}`, r]));
+  }
+
   async list(userId: string) {
     const rows = await this.prisma.conversation.findMany({
       where: participantOf(userId),
       include: {
-        ride: { include: { driver: { select: { id: true, name: true } } } },
+        trip: tripSummary,
         passenger: { select: { id: true, name: true } },
+        driver: { select: { id: true, name: true } },
         messages: {
           orderBy: { createdAt: 'desc' },
           take: 1,
@@ -56,33 +86,22 @@ export class ConversationsService {
       _count: { _all: true },
     });
     const unreadBy = new Map(unread.map((u) => [u.conversationId, u._count._all]));
-
-    // Prośba może już nie istnieć (odrzucona/anulowana) — wątek zostaje.
-    const bookings = await this.prisma.booking.findMany({
-      where: { OR: rows.map((r) => ({ rideId: r.rideId, passengerId: r.passengerId })) },
-    });
-    const bookingBy = new Map(bookings.map((b) => [`${b.rideId}:${b.passengerId}`, b]));
+    const reservations = await this.reservationsFor(rows);
 
     return rows.map((row) => {
-      const booking = bookingBy.get(`${row.rideId}:${row.passengerId}`) ?? null;
+      const reservation = reservations.get(`${row.tripId}:${row.passengerId}:${row.driverId}`) ?? null;
       const last = row.messages[0] ?? null;
-      const seatId = booking?.seatId ?? last?.seatId ?? null;
+      const seatId = reservation?.seatId ?? last?.seatId ?? null;
       return {
         id: row.id,
-        rideId: row.rideId,
+        tripId: row.tripId,
         // Druga strona rozmowy — zależy, kto pyta.
-        withName: row.passengerId === userId ? row.ride.driver.name : row.passenger.name,
-        ride: {
-          id: row.ride.id,
-          origin: row.ride.origin,
-          destination: row.ride.destination,
-          departureAt: row.ride.departureAt,
-          carModel: row.ride.carModel,
-        },
-        bookingStatus: booking?.status ?? null,
-        bookingId: booking?.id ?? null,
+        withName: row.passengerId === userId ? row.driver.name : row.passenger.name,
+        trip: row.trip,
+        reservationStatus: reservation?.status ?? null,
+        reservationId: reservation?.id ?? null,
         seatId,
-        seatLabel: this.seatLabel(row.ride.seatLayout, seatId),
+        seatLabel: this.seatLabel(reservation?.ride.seatLayoutSnapshot, seatId),
         lastMessage: last && {
           id: last.id,
           conversationId: last.conversationId,
@@ -105,8 +124,9 @@ export class ConversationsService {
     const row = await this.prisma.conversation.findFirst({
       where: { id, ...participantOf(userId) },
       include: {
-        ride: { include: { driver: { select: { id: true, name: true } } } },
+        trip: tripSummary,
         passenger: { select: { id: true, name: true } },
+        driver: { select: { id: true, name: true } },
         messages: {
           orderBy: { createdAt: 'asc' },
           include: { sender: { select: { name: true } } },
@@ -120,27 +140,20 @@ export class ConversationsService {
       data: { readAt: new Date() },
     });
 
-    const booking = await this.prisma.booking.findUnique({
-      where: { rideId_passengerId: { rideId: row.rideId, passengerId: row.passengerId } },
-    });
+    const reservations = await this.reservationsFor([row]);
+    const reservation = reservations.get(`${row.tripId}:${row.passengerId}:${row.driverId}`) ?? null;
 
     return {
       id: row.id,
-      rideId: row.rideId,
-      withName: row.passengerId === userId ? row.ride.driver.name : row.passenger.name,
+      tripId: row.tripId,
+      withName: row.passengerId === userId ? row.driver.name : row.passenger.name,
       /** Kierowca widzi przyciski decyzji, pasażer nie. */
-      isDriver: row.ride.driverId === userId,
-      ride: {
-        id: row.ride.id,
-        origin: row.ride.origin,
-        destination: row.ride.destination,
-        departureAt: row.ride.departureAt,
-        carModel: row.ride.carModel,
-      },
-      bookingStatus: booking?.status ?? null,
-      bookingId: booking?.id ?? null,
-      seatId: booking?.seatId ?? null,
-      seatLabel: this.seatLabel(row.ride.seatLayout, booking?.seatId ?? null),
+      isDriver: row.driverId === userId,
+      trip: row.trip,
+      reservationStatus: reservation?.status ?? null,
+      reservationId: reservation?.id ?? null,
+      seatId: reservation?.seatId ?? null,
+      seatLabel: this.seatLabel(reservation?.ride.seatLayoutSnapshot, reservation?.seatId ?? null),
       messages: row.messages.map((m) => ({
         id: m.id,
         conversationId: m.conversationId,

@@ -9,7 +9,7 @@ import type { Prisma } from '@prisma/client';
  * datę z formularza — lepsza niż żadna.
  */
 export async function recomputeTripSchedule(tx: Prisma.TransactionClient, tripId: string) {
-  const legs = await tx.tripRideLeg.findMany({
+  const legs = await tx.rideLeg.findMany({
     where: { ride: { tripId } },
     select: { direction: true, departureAt: true, arrivalAt: true },
   });

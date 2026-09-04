@@ -40,7 +40,7 @@ export class VehiclesService {
       throw new ForbiddenException('Możesz usuwać tylko własne auta');
     }
 
-    const planned = await this.prisma.tripRide.count({
+    const planned = await this.prisma.ride.count({
       where: { vehicleId: id, trip: { status: { in: ['OPEN', 'CONFIRMED'] } } },
     });
     if (planned > 0) {
@@ -52,7 +52,7 @@ export class VehiclesService {
     // Auto z odbytych wycieczek trzyma je za snapshot miejsc — usunięcie
     // zabrałoby historię komuś, kto nim jechał. Mówimy to wprost zamiast
     // wywracać się na kluczu obcym.
-    const historic = await this.prisma.tripRide.count({ where: { vehicleId: id } });
+    const historic = await this.prisma.ride.count({ where: { vehicleId: id } });
     if (historic > 0) {
       throw new ConflictException('To auto jest w historii wycieczek i zostaje w archiwum');
     }
