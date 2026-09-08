@@ -60,7 +60,9 @@ npm run build --workspace packages/shared -- --watch   # watch przy pracy nad sh
 npm run build --workspace apps/api                # produkcyjny build API
 npm run prisma:generate --workspace apps/api      # regeneracja klienta Prisma po zmianie schematu
 npm test                                          # testy jednostkowe pakietu shared
+npm test --workspace apps/api                     # testy wyszukiwarki miejsc (wymagają bazy z seedem)
 node docs/weryfikacja-modelu-wycieczkowego.mjs    # scenariusz end-to-end na działającym API
+node docs/weryfikacja-bazy-miejsc.mjs             # scenariusz end-to-end dla bazy miejsc
 ```
 
 > Przy edycji `packages/shared` trzymaj watch w osobnym terminalu — bez tego API
@@ -70,11 +72,115 @@ node docs/weryfikacja-modelu-wycieczkowego.mjs    # scenariusz end-to-end na dzi
 > żądanie `/api/*` — tak proxy Vite sygnalizuje nieosiągalny backend.
 > Szczegóły: [docs/bugfix-2026-09-01-rejestracja-500.md](docs/bugfix-2026-09-01-rejestracja-500.md).
 
+## Baza miejsc
+
+Cel wycieczki nie jest zwykłym polem tekstowym: podpowiada się z bazy nazw
+geograficznych, a wybrane miejsce zna swoje pasmo — dlatego wyszukiwanie po
+Tatrach znajduje też wyjazdy na Rysy. Własną nazwę („Chatka u Zbyszka") wciąż
+można wpisać z ręki; wtedy wycieczka zapisuje samą nazwę, bez powiązania.
+
+### Skąd wziąć dane
+
+Dane pochodzą z **Państwowego Rejestru Nazw Geograficznych** (PRNG), dostępnego
+w [dane.gov.pl](https://dane.gov.pl). Potrzebne są dwa zbiory, oba w formacie
+**SHP** (shapefile):
+
+- `PRNG_OBIEKTY_FIZJOGRAFICZNE_SHP` — szczyty, pasma, przełęcze, regiony,
+- `PRNG_MIEJSCOWOSCI_SHP` — miasta i wsie.
+
+Rozpakuj je gdziekolwiek w `apps/api/prisma/data/` — skrypt sam znajdzie każdy
+plik `.shp` w tym katalogu wraz z podkatalogami. Komplet to zawsze cztery pliki
+o tej samej nazwie: `.shp` (geometria), `.dbf` (atrybuty), `.shx` (indeks)
+i `.prj` (układ współrzędnych). Katalog jest w `.gitignore` — same `.dbf` mają
+po półtora giga.
+
+### Kolejność uruchamiania
+
+```bash
+npm run places:import  --workspace apps/api   # PRNG → tabela Place (kilka minut)
+npm run places:popular --workspace apps/api   # lista popularnych: popularity, aliasy, rodzice
+```
+
+Kolejność ma znaczenie: drugi skrypt dopina się do rekordów utworzonych przez
+pierwszy. Oba są idempotentne, więc powtórne uruchomienie niczego nie dubluje —
+import po dorzuceniu nowego pliku PRNG dołoży tylko to, czego jeszcze nie ma.
+
+Zanim napiszesz cokolwiek pod nowy plik, warto zajrzeć do środka:
+
+```bash
+npm run places:import --workspace apps/api -- --inspect
+```
+
+Wypisze nagłówki kolumn i wszystkie wartości pola „rodzaj obiektu" z liczebnością
+oraz z zaznaczeniem, które z nich skrypt aktualnie mapuje na własny typ miejsca.
+
+### Jak działa import
+
+- Bierzemy wyłącznie wiersze z `rodzajRepr = "punkt główny"`. Jeden obiekt PRNG
+  ma kilka punktów (dodatkowe, początkowy i końcowy dla rzek) i dopiero po tym
+  zawężeniu `idPRNG` jest unikalny — on jest kluczem idempotencji
+  (`source = "prng:<idPRNG>"`).
+
+  > Przedrostek to `prng:`, a nie `shp:`, choć pliki są shapefile'ami: `shp`
+  > nazywa format pliku, a identyfikator pochodzi z kolumny `idPRNG`, czyli
+  > z samego rejestru. Ten sam obiekt ma to samo `idPRNG` niezależnie od tego,
+  > czy pobierzesz go jako SHP, XLSX czy GML — więc zmiana formatu eksportu
+  > nie zdubluje bazy. Gdyby kiedyś przyszło zmienić przedrostek, wymaga to
+  > przeimportowania wszystkich rekordów, bo to po nim skrypt je odnajduje.
+- Współrzędne liczymy z geometrii `.shp` przez `proj4`, z PL-1992 (EPSG:2180)
+  na WGS84. Tekstowa kolumna `wspGeograf` ma dokładność sekundy kątowej,
+  czyli jakichś 30 metrów.
+- Miejscowości ograniczamy do prostokąta obejmującego polskie góry
+  (49–51° N, 15–23° E). Każda wieś z Mazowsza tylko rozmywałaby podpowiedzi.
+- `elevation` zostaje prawie zawsze puste: PRNG nie ma kolumny z wysokością.
+  Bierzemy ją tylko stamtąd, gdzie ktoś wpisał ją w opis obiektu.
+- Import **nie rusza** tego, co należy do listy popularnych miejsc:
+  `popularity` i `parentId` nigdy, a `type` i nazw obocznych — dla rekordów,
+  które na tej liście są. Dzięki temu kolejność liczy się tylko przy pierwszym
+  przebiegu: potem oba skrypty można puszczać w dowolnej kolejności, bez
+  cofania sobie nawzajem roboty.
+
+### Jak dodać miejsce do listy popularnych
+
+Lista mieszka w [`apps/api/prisma/data/places.seed.json`](apps/api/prisma/data/places.seed.json)
+i jest jedynym plikiem, który się w tym celu edytuje. Wpis wygląda tak:
+
+```json
+{ "name": "Babia Góra", "type": "PEAK", "parent": "Beskid Żywiecki", "popularity": 100, "aliases": ["Diablak"] }
+```
+
+Współrzędnych **nie wpisuje się ręcznie** — dokłada je dopasowanie do PRNG.
+Skrypt szuka po nazwie głównej i po nazwach obocznych, w obie strony: rejestr
+zapisuje „Przełęcz Okraj" jako „Okraj", a „Luboń Wielki" jako „Luboń", więc
+krótszą formę wystarczy podać w `aliases`. Gdy nazw pasuje kilka (samych
+„Babich Gór" jest w Polsce kilkanaście), wygrywa ta najbliższa rodzicowi —
+dlatego rodzic musi być na liście wcześniej.
+
+Umownie: pasma i regiony `90`, Korona Gór Polski `100`, inne znane szczyty
+`70`, miejscowości wypadowe `80`, przełęcze `50`. Liczba steruje tylko
+kolejnością podpowiedzi; `0` znaczy „tylko w pełnej bazie, wyszukiwane
+na serwerze".
+
+Po edycji uruchom `places:popular` i przeczytaj raport: pokaże dopasowane,
+utworzone ręcznie, **niedopasowane** i konflikty. Lista jest deklaracją stanu —
+skreślenie wpisu zdejmuje miejsce z popularnych przy najbliższym przebiegu.
+
+Miejsca, którego nie ma w PRNG (jak Sudety — rejestr zna tylko kawałek lasu
+o tej nazwie), skrypt utworzy sam ze `source: "manual"`, biorąc współrzędne
+ze środka ciężkości jego dzieci. Jeśli dzieci nie ma, wypisze wpis jako
+niedopasowany i **nie** utworzy rekordu bez współrzędnych.
+
 ## Model danych
 
 Jednostką nie jest przejazd, tylko **wycieczka** — wspólny wyjazd w obie strony
 tym samym składem.
 
+- **Miejsce** (`Place`) — nazwa geograficzna z PRNG albo dopisana ręcznie:
+  szczyt, pasmo, przełęcz, miejscowość, region. Hierarchia (szczyt → pasmo →
+  region) jest płytka i ustawiana tylko dla listy popularnych — PRNG nie mówi,
+  w którym paśmie leży szczyt. Wycieczka wskazuje dwa miejsca o różnych
+  **rolach**, nie typach: `destinationPlace` (dokąd) i `basePlace`
+  (skąd atakujemy). Patrz [Baza miejsc](#baza-miejsc).
 - **Wycieczka** (`Trip`) — cel, opis, widoczność i status. Ramy czasowe
   (`startsAt`, `endsAt`) nie są przepisywane z formularza: wyliczają się
   z odcinków aut, więc wycieczka zaczyna się, gdy rusza pierwsze auto, a kończy,

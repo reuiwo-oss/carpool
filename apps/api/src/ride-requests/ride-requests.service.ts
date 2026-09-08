@@ -17,7 +17,18 @@ export class RideRequestsService {
     const rows = await this.prisma.rideRequest.findMany({
       where: { status: 'OPEN', dateTo: { gte: new Date() } },
       orderBy: { dateFrom: 'asc' },
-      include: { user: { select: { name: true } } },
+      include: {
+        user: { select: { name: true } },
+        destinationPlace: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+            region: true,
+            parent: { select: { name: true } },
+          },
+        },
+      },
     });
 
     return rows.map((row) => ({
@@ -25,6 +36,15 @@ export class RideRequestsService {
       userId: row.userId,
       userName: row.user.name,
       destination: row.destination,
+      destinationPlace: row.destinationPlace
+        ? {
+            id: row.destinationPlace.id,
+            name: row.destinationPlace.name,
+            type: row.destinationPlace.type,
+            parentName: row.destinationPlace.parent?.name ?? null,
+            region: row.destinationPlace.region,
+          }
+        : null,
       dateFrom: row.dateFrom.toISOString(),
       dateTo: row.dateTo.toISOString(),
       seatsNeeded: row.seatsNeeded,
@@ -45,6 +65,7 @@ export class RideRequestsService {
       data: {
         userId,
         destination: dto.destination.trim(),
+        destinationPlaceId: dto.destinationPlaceId || null,
         dateFrom,
         dateTo,
         seatsNeeded: dto.seatsNeeded ?? 1,

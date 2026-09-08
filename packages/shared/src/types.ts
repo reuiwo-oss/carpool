@@ -1,3 +1,5 @@
+import type { TripPlace } from './places.js';
+
 /**
  * Typy współdzielone między API, webem i przyszłą aplikacją mobilną.
  * Jedno źródło prawdy dla kształtu danych.
@@ -156,7 +158,13 @@ export interface TripParticipant {
 export interface TripSummary {
   id: string;
   title: string;
+  /** Etykieta celu — także wtedy, gdy cel jest własną nazwą spoza bazy miejsc. */
   destination: string;
+  /** Cel z bazy miejsc, o ile użytkownik wybrał go z podpowiedzi. */
+  destinationPlace: TripPlace | null;
+  /** Baza / dojazd: etykieta i, o ile jest, miejsce z bazy. */
+  baseName: string | null;
+  basePlace: TripPlace | null;
   startsAt: string;
   endsAt: string;
   visibility: TripVisibility;
@@ -190,6 +198,7 @@ export interface RideRequest {
   userId: string;
   userName: string;
   destination: string;
+  destinationPlace: TripPlace | null;
   dateFrom: string;
   dateTo: string;
   seatsNeeded: number;

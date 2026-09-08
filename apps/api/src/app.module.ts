@@ -7,6 +7,7 @@ import { TripRidesModule } from './trip-rides/trip-rides.module';
 import { ReservationsModule } from './reservations/reservations.module';
 import { RideRequestsModule } from './ride-requests/ride-requests.module';
 import { ConversationsModule } from './conversations/conversations.module';
+import { PlacesModule } from './places/places.module';
 import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
@@ -15,6 +16,7 @@ import { PrismaModule } from './prisma/prisma.module';
     AuthModule,
     UsersModule,
     VehiclesModule,
+    PlacesModule,
     TripsModule,
     TripRidesModule,
     ReservationsModule,

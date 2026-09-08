@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import type { PlaceRef } from '@carpool/shared';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { addTripRide, createTrip } from '../features/trips/tripsApi';
 import VehiclePicker from '../features/vehicles/VehiclePicker';
+import PlacePicker from '../features/places/PlacePicker';
 import { useToast } from '../components/ToastContext';
 import { BackButton, PrimaryButton } from '../components/ui';
 import { toDatetimeLocal } from '../lib/format';
@@ -23,12 +25,18 @@ export default function CreateTripPage() {
   const [params] = useSearchParams();
   const dates = defaultDates();
 
-  // Z ekranu próśb wchodzimy tu z gotowym celem.
+  // Z ekranu próśb wchodzimy tu z gotowym celem. Bez id miejsca — prośba
+  // przekazuje samą nazwę, a użytkownik i tak może ją zamienić na podpowiedź.
   const wanted = params.get('destination') ?? '';
+  const wantedPlaceId = params.get('placeId');
+
+  const [destination, setDestination] = useState<PlaceRef | null>(
+    wanted ? ({ placeId: wantedPlaceId, name: wanted } as PlaceRef) : null,
+  );
+  const [base, setBase] = useState<PlaceRef | null>(null);
 
   const [form, setForm] = useState({
     title: wanted,
-    destination: wanted,
     description: '',
     vehicleId: '',
     note: '',
@@ -50,6 +58,10 @@ export default function CreateTripPage() {
    */
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!destination) {
+      setError('Wybierz cel wycieczki.');
+      return;
+    }
     if (!form.vehicleId) {
       setError('Wybierz auto albo dodaj nowe.');
       return;
@@ -64,7 +76,12 @@ export default function CreateTripPage() {
     try {
       const trip = await createTrip({
         title: form.title.trim(),
-        destination: form.destination.trim(),
+        // Nazwa leci zawsze, id tylko przy wyborze z podpowiedzi — dzięki temu
+        // własny cel zapisuje się tak samo jak wybrany z bazy.
+        destination: destination.name,
+        destinationPlaceId: destination.placeId ?? undefined,
+        baseName: base?.name,
+        basePlaceId: base?.placeId ?? undefined,
         description: form.description.trim() || undefined,
         startsAt: outboundAt,
         endsAt: backAt,
@@ -110,11 +127,19 @@ export default function CreateTripPage() {
               value={form.title} onChange={(e) => set({ title: e.target.value })} />
           </div>
 
-          <div className="field">
-            <label htmlFor="t-destination">Cel</label>
-            <input id="t-destination" className="input" placeholder="Zakopane" required
-              value={form.destination} onChange={(e) => set({ destination: e.target.value })} />
-          </div>
+          <PlacePicker
+            label="Cel wycieczki"
+            placeholder="Babia Góra, Tatry, Karkonosze…"
+            value={destination}
+            onChange={setDestination}
+          />
+
+          <PlacePicker
+            label="Baza / dojazd do (opcjonalnie)"
+            placeholder="Zakopane, Karpacz…"
+            value={base}
+            onChange={setBase}
+          />
 
           <div className="field">
             <label htmlFor="t-description">Opis (opcjonalnie)</label>

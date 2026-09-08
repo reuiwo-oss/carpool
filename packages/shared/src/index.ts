@@ -2,5 +2,8 @@
 // kod działa i w CommonJS (API), i w ESM (bundler weba) — bez nich Node ESM
 // nie rozwiąże ścieżki.
 export * from './types.js';
+export * from './normalize.js';
+export * from './places.js';
+export * from './place-ranking.js';
 export * from './seat-layout.js';
 export * from './participant-roles.js';
