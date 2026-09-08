@@ -1,4 +1,15 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { TripsService } from './trips.service';
 import { CreateTripDto, UpdateTripDto } from './trips.dto';
@@ -12,10 +23,13 @@ import { CreateTripDto, UpdateTripDto } from './trips.dto';
 export class TripsController {
   constructor(private trips: TripsService) {}
 
-  /** Publiczne, nadchodzące wycieczki — dla każdego zalogowanego */
+  /**
+   * Publiczne, nadchodzące wycieczki — dla każdego zalogowanego.
+   * Z `placeId` zawężone do jednego miejsca razem z jego okolicą w hierarchii.
+   */
   @Get()
-  list() {
-    return this.trips.list();
+  list(@Query('placeId') placeId?: string) {
+    return this.trips.list(placeId);
   }
 
   /**

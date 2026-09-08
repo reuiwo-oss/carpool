@@ -11,9 +11,11 @@ import {
   type Trip,
   type TripStatus,
   type TripSummary,
+  type TripPlace,
   type TripVisibility,
 } from '@carpool/shared';
 import { PrismaService } from '../prisma/prisma.service';
+import { PlacesService } from '../places/places.service';
 import { TripAccessService } from './trip-access.service';
 import { countFreeSeats, seatsWithReservations } from './seat-state';
 import { CreateTripDto, UpdateTripDto } from './trips.dto';
@@ -29,23 +31,84 @@ interface SummaryRow {
   status: TripStatus;
   createdById: string;
   createdBy: { name: string };
+  baseName: string | null;
+  destinationPlace: PlaceRow | null;
+  basePlace: PlaceRow | null;
+}
+
+/** Tyle miejsca, ile ekran naprawdę rysuje — nazwa, typ i kontekst. */
+interface PlaceRow {
+  id: string;
+  name: string;
+  type: TripPlace['type'];
+  region: string | null;
+  parent: { name: string } | null;
+}
+
+/** Wspólny `include` dla obu miejsc wycieczki — cel i baza czytają się tak samo. */
+const PLACE_INCLUDE = {
+  select: {
+    id: true,
+    name: true,
+    type: true,
+    region: true,
+    parent: { select: { name: true } },
+  },
+} as const;
+
+/** Rodzic spłaszczony do nazwy — ekran i tak pokazuje „Babia Góra, Beskid Żywiecki". */
+function toTripPlace(place: PlaceRow | null): TripPlace | null {
+  if (!place) return null;
+  return {
+    id: place.id,
+    name: place.name,
+    type: place.type,
+    parentName: place.parent?.name ?? null,
+    region: place.region,
+  };
 }
 
 @Injectable()
 export class TripsService {
-  constructor(private prisma: PrismaService, private access: TripAccessService) {}
+  constructor(
+    private prisma: PrismaService,
+    private access: TripAccessService,
+    private places: PlacesService,
+  ) {}
 
-  /** Tablica ogłoszeń: publiczne, jeszcze nieodbyte, najbliższe u góry. */
-  async list(): Promise<TripSummary[]> {
+  /**
+   * Tablica ogłoszeń: publiczne, jeszcze nieodbyte, najbliższe u góry.
+   *
+   * `placeId` zawęża listę do wybranego miejsca wraz z okolicą w hierarchii —
+   * wybór Tatr pokazuje też wyjazdy na Rysy, a wybór Rys nie ukrywa tych
+   * opisanych ogólniej jako wyjazd w Tatry.
+   */
+  async list(placeId?: string): Promise<TripSummary[]> {
+    const scope = placeId ? await this.places.searchScope(placeId) : null;
+
+    // Puste `scope` znaczy „nie ma takiego miejsca" — lepiej pokazać pustą
+    // listę niż po cichu wszystkie wycieczki.
+    const byPlace = scope
+      ? {
+          OR: [
+            { destinationPlaceId: { in: scope } },
+            { basePlaceId: { in: scope } },
+          ],
+        }
+      : {};
+
     const rows = await this.prisma.trip.findMany({
       where: {
         visibility: 'PUBLIC',
         status: { in: ['OPEN', 'CONFIRMED'] },
         startsAt: { gte: new Date() },
+        ...byPlace,
       },
       orderBy: { startsAt: 'asc' },
       include: {
         createdBy: { select: { name: true } },
+        destinationPlace: PLACE_INCLUDE,
+        basePlace: PLACE_INCLUDE,
         _count: { select: { participants: true } },
         rides: {
           select: { seatLayoutSnapshot: true, _count: { select: { reservations: true } } },
@@ -72,6 +135,8 @@ export class TripsService {
       orderBy: { startsAt: 'asc' },
       include: {
         createdBy: { select: { name: true } },
+        destinationPlace: PLACE_INCLUDE,
+        basePlace: PLACE_INCLUDE,
         participants: { select: { userId: true, isOrganizer: true } },
         rides: {
           select: {
@@ -107,6 +172,8 @@ export class TripsService {
       where: { id },
       include: {
         createdBy: { select: { name: true } },
+        destinationPlace: PLACE_INCLUDE,
+        basePlace: PLACE_INCLUDE,
         participants: {
           orderBy: { joinedAt: 'asc' },
           include: { user: { select: { name: true, avatarUrl: true } } },
@@ -199,6 +266,9 @@ export class TripsService {
         data: {
           title: dto.title.trim(),
           destination: dto.destination.trim(),
+          destinationPlaceId: dto.destinationPlaceId || null,
+          baseName: dto.baseName?.trim() || null,
+          basePlaceId: dto.basePlaceId || null,
           description: dto.description?.trim() || null,
           startsAt,
           endsAt,
@@ -268,6 +338,13 @@ export class TripsService {
       data: {
         ...(dto.title !== undefined ? { title: dto.title.trim() } : {}),
         ...(dto.destination !== undefined ? { destination: dto.destination.trim() } : {}),
+        // Pusty string znaczy „odepnij miejsce" — użytkownik wpisał własną
+        // nazwę tam, gdzie wcześniej wybrał podpowiedź.
+        ...(dto.destinationPlaceId !== undefined
+          ? { destinationPlaceId: dto.destinationPlaceId || null }
+          : {}),
+        ...(dto.baseName !== undefined ? { baseName: dto.baseName.trim() || null } : {}),
+        ...(dto.basePlaceId !== undefined ? { basePlaceId: dto.basePlaceId || null } : {}),
         ...(dto.description !== undefined ? { description: dto.description.trim() || null } : {}),
         ...(dto.visibility !== undefined ? { visibility: dto.visibility } : {}),
         ...(dto.status !== undefined ? { status: dto.status } : {}),
@@ -295,6 +372,9 @@ export class TripsService {
       status: row.status,
       createdById: row.createdById,
       organizerName: row.createdBy.name,
+      destinationPlace: toTripPlace(row.destinationPlace),
+      baseName: row.baseName,
+      basePlace: toTripPlace(row.basePlace),
       freeSeats,
       participantsCount,
       ...(myRoles ? { myRoles } : {}),

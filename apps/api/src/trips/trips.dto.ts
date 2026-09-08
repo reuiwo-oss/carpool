@@ -24,6 +24,25 @@ export class CreateTripDto {
    * Ramy czasowe z formularza. Po dodaniu pierwszego auta przelicza je
    * `recomputeTripSchedule` z odcinków — te wartości są punktem wyjścia.
    */
+
+  /**
+   * Cel wybrany z bazy miejsc. Puste, gdy użytkownik wpisał własną nazwę —
+   * wtedy zostaje samo `destination`.
+   */
+  @IsOptional()
+  @IsString()
+  destinationPlaceId?: string;
+
+  /** Baza / dojazd: nazwa do wyświetlenia i, opcjonalnie, miejsce z bazy. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  baseName?: string;
+
+  @IsOptional()
+  @IsString()
+  basePlaceId?: string;
+
   @IsDateString()
   startsAt!: string;
 
@@ -53,6 +72,24 @@ export class UpdateTripDto {
   @MaxLength(2000)
   description?: string;
 
+
+  /**
+   * Cel wybrany z bazy miejsc. Puste, gdy użytkownik wpisał własną nazwę —
+   * wtedy zostaje samo `destination`.
+   */
+  @IsOptional()
+  @IsString()
+  destinationPlaceId?: string;
+
+  /** Baza / dojazd: nazwa do wyświetlenia i, opcjonalnie, miejsce z bazy. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  baseName?: string;
+
+  @IsOptional()
+  @IsString()
+  basePlaceId?: string;
   @IsOptional()
   @IsIn(TRIP_VISIBILITIES)
   visibility?: TripVisibility;

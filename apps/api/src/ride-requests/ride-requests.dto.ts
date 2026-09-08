@@ -7,6 +7,11 @@ export class CreateRideRequestDto {
   @MaxLength(120)
   destination!: string;
 
+  /** Cel z bazy miejsc. Puste, gdy proszący wpisał własną nazwę. */
+  @IsOptional()
+  @IsString()
+  destinationPlaceId?: string;
+
   @IsDateString()
   dateFrom!: string;
 

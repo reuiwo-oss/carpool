@@ -3,5 +3,6 @@
 // nie rozwiąże ścieżki.
 export * from './types.js';
 export * from './normalize.js';
+export * from './places.js';
 export * from './seat-layout.js';
 export * from './participant-roles.js';
