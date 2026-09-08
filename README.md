@@ -120,6 +120,13 @@ oraz z zaznaczeniem, które z nich skrypt aktualnie mapuje na własny typ miejsc
   ma kilka punktów (dodatkowe, początkowy i końcowy dla rzek) i dopiero po tym
   zawężeniu `idPRNG` jest unikalny — on jest kluczem idempotencji
   (`source = "prng:<idPRNG>"`).
+
+  > Przedrostek to `prng:`, a nie `shp:`, choć pliki są shapefile'ami: `shp`
+  > nazywa format pliku, a identyfikator pochodzi z kolumny `idPRNG`, czyli
+  > z samego rejestru. Ten sam obiekt ma to samo `idPRNG` niezależnie od tego,
+  > czy pobierzesz go jako SHP, XLSX czy GML — więc zmiana formatu eksportu
+  > nie zdubluje bazy. Gdyby kiedyś przyszło zmienić przedrostek, wymaga to
+  > przeimportowania wszystkich rekordów, bo to po nim skrypt je odnajduje.
 - Współrzędne liczymy z geometrii `.shp` przez `proj4`, z PL-1992 (EPSG:2180)
   na WGS84. Tekstowa kolumna `wspGeograf` ma dokładność sekundy kątowej,
   czyli jakichś 30 metrów.
