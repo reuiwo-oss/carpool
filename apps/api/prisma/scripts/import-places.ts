@@ -6,8 +6,11 @@
  *
  * Skrypt jest idempotentny: kluczem jest `source = "prng:<idPRNG>"`, więc
  * kolejne uruchomienie aktualizuje te same rekordy zamiast je dublować.
- * Świadomie nie dotyka `popularity` ani `parentId` — te ustawia dopiero
- * `apply-popular-places.ts` i ponowny import nie ma prawa ich skasować.
+ *
+ * Nie dotyka tego, co należy do kuratorowanej listy popularnych miejsc:
+ * `popularity` i `parentId` nigdy, a `type` i nazw obocznych — dla rekordów,
+ * które na tej liście są. Inaczej import puszczony po `apply-popular-places.ts`
+ * cofa jego robotę.
  *
  * Hierarchii tu nie budujemy: PRNG nie mówi, w którym paśmie leży szczyt.
  */
@@ -222,6 +225,7 @@ async function importPlaces(bases: string[]) {
       elevation: true,
       aliases: true,
       region: true,
+      popularity: true,
     },
   });
   const bySource = new Map(existing.map((place) => [place.source, place]));
@@ -236,20 +240,33 @@ async function importPlaces(bases: string[]) {
       continue;
     }
 
+    // Rekord z listy popularnych ma kuratora, a kurator bije rejestr: typ
+    // („Beskid Sądecki" jest u nas pasmem, choć PRNG zna go jako region
+    // naturalny) i nazwy oboczne (to stamtąd „Okraj" wie, że bywa nazywany
+    // „Przełęczą Okraj"). Bez tego wyjątku ponowny import po cichu cofa
+    // jedno i drugie, a nazwa z listy przestaje cokolwiek znajdować.
+    const curated = current.popularity > 0;
+
     const changed =
       current.name !== place.name ||
-      current.type !== place.type ||
       current.lat !== place.lat ||
       current.lng !== place.lng ||
       current.elevation !== place.elevation ||
       current.region !== place.region ||
-      current.aliases.join('|') !== place.aliases.join('|');
+      (!curated &&
+        (current.type !== place.type ||
+          current.aliases.join('|') !== place.aliases.join('|')));
 
     if (!changed) continue;
 
-    // Ani `popularity`, ani `parentId` — te należą do listy popularnych miejsc
-    // i ponowny import nie ma prawa ich cofnąć.
-    await prisma.place.update({ where: { id: current.id }, data: place });
+    const { type, aliases, aliasesNorm, ...fromRegistry } = place;
+
+    // Ani `popularity`, ani `parentId` — te w całości należą do listy
+    // popularnych miejsc i ponowny import nie ma prawa ich cofnąć.
+    await prisma.place.update({
+      where: { id: current.id },
+      data: curated ? fromRegistry : place,
+    });
     updated++;
   }
 

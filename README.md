@@ -127,8 +127,11 @@ oraz z zaznaczeniem, które z nich skrypt aktualnie mapuje na własny typ miejsc
   (49–51° N, 15–23° E). Każda wieś z Mazowsza tylko rozmywałaby podpowiedzi.
 - `elevation` zostaje prawie zawsze puste: PRNG nie ma kolumny z wysokością.
   Bierzemy ją tylko stamtąd, gdzie ktoś wpisał ją w opis obiektu.
-- Import **nie rusza** `popularity` ani `parentId` — te należą do listy
-  popularnych miejsc i ponowny import nie ma prawa ich cofnąć.
+- Import **nie rusza** tego, co należy do listy popularnych miejsc:
+  `popularity` i `parentId` nigdy, a `type` i nazw obocznych — dla rekordów,
+  które na tej liście są. Dzięki temu kolejność liczy się tylko przy pierwszym
+  przebiegu: potem oba skrypty można puszczać w dowolnej kolejności, bez
+  cofania sobie nawzajem roboty.
 
 ### Jak dodać miejsce do listy popularnych
 

@@ -90,6 +90,29 @@ describe('GET /places/popular', () => {
   });
 });
 
+/**
+ * Import i lista popularnych miejsc piszą po tej samej tabeli. Import jest
+ * właścicielem tego, co przychodzi z rejestru, a lista — typu i nazw obocznych
+ * dla swoich rekordów. Te asercje pilnują granicy: gdyby import przestał ją
+ * uznawać, przy pierwszym uruchomieniu po `places:popular` cicho skasowałby
+ * kuratorskie poprawki i nikt by tego nie zauważył aż do zgłoszenia, że
+ * „przełęcz Okraj się nie wyszukuje".
+ */
+describe('to, co dokłada lista popularnych, przeżywa ponowny import', () => {
+  it('nazwa z listy szuka rekordu zapisanego w PRNG inaczej', async () => {
+    expect(await names('przelecz okraj')).toContain('Okraj');
+    expect(await names('lubon wielki')).toContain('Luboń');
+  });
+
+  it('typ nadpisany listą zostaje nadpisany', async () => {
+    const popular = await places.popular();
+    const sadecki = popular.find((place) => place.name === 'Beskid Sądecki');
+
+    // PRNG zna go jako „region naturalny"; u nas jest pasmem, bo tak mówi lista.
+    expect(sadecki?.type).toBe('RANGE');
+  });
+});
+
 describe('GET /places/:id/descendants', () => {
   it('schodzi rekurencyjnie: pod Sudetami są i pasma, i ich szczyty', async () => {
     const sudety = await prisma.place.findFirstOrThrow({
