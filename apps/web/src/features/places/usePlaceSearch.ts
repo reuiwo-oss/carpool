@@ -3,8 +3,6 @@ import type { PlaceSuggestion } from '@carpool/shared';
 import { searchPlaces } from './placesApi';
 import { usePopularPlaces } from './usePopularPlaces';
 
-export { rankPlaces } from './ranking';
-
 /** Poniżej dwóch znaków serwer i tak odmówi — nie ma po co pytać. */
 const MIN_SERVER_QUERY = 2;
 

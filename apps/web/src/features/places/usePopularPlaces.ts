@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { PlaceSuggestion } from '@carpool/shared';
+import { rankPlaces, type PlaceSuggestion } from '@carpool/shared';
 import { listPopularPlaces } from './placesApi';
-import { rankPlaces } from './ranking';
 
 /**
  * Lista popularnych miejsc, pobierana raz na sesję.

@@ -1,4 +1,5 @@
-import { normalizeName, type PlaceSuggestion } from '@carpool/shared';
+import { normalizeName } from './normalize.js';
+import type { PlaceSuggestion } from './places.js';
 
 /**
  * Ranking podpowiedzi liczony w pamięci, na krótkiej liście popularnych miejsc.
