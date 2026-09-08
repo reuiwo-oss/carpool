@@ -6,6 +6,8 @@ import {
   type Seat,
   type Trip,
   type TripRide,
+  PLACE_TYPE_LABEL,
+  placeSubtitle,
 } from '@carpool/shared';
 import {
   acceptReservation,
@@ -135,7 +137,26 @@ export default function TripDetailPage() {
         <h1 style={{ fontSize: 32, margin: 0, lineHeight: 1.05 }}>{trip.title}</h1>
         <div style={{ fontSize: 15, color: 'var(--color-neutral-700)', marginTop: 4 }}>
           {trip.destination}
+          {/* Pasmo dopisane do szczytu: „Babia Góra, Beskid Żywiecki" mówi
+              więcej niż sama nazwa — nie każdy wie, gdzie ta góra stoi. */}
+          {trip.destinationPlace?.parentName && `, ${trip.destinationPlace.parentName}`}
+          {trip.destinationPlace && (
+            <span style={{ fontSize: 12, color: 'var(--color-neutral-600)', marginLeft: 6 }}>
+              {PLACE_TYPE_LABEL[trip.destinationPlace.type]}
+            </span>
+          )}
         </div>
+
+        {trip.baseName && (
+          <div style={{ fontSize: 14, color: 'var(--color-neutral-700)', marginTop: 2 }}>
+            Baza: {trip.baseName}
+            {trip.basePlace && (
+              <span style={{ fontSize: 12, color: 'var(--color-neutral-600)', marginLeft: 6 }}>
+                {placeSubtitle(trip.basePlace)}
+              </span>
+            )}
+          </div>
+        )}
 
         <div style={{
           display: 'flex', gap: 20, margin: '14px 0 6px', padding: '12px 0',

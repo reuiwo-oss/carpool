@@ -5,6 +5,7 @@ export const listRideRequests = () => api<RideRequest[]>('/ride-requests');
 
 export const createRideRequest = (data: {
   destination: string;
+  destinationPlaceId?: string;
   dateFrom: string;
   dateTo: string;
   seatsNeeded?: number;

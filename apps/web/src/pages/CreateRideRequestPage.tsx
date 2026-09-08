@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import type { PlaceRef } from '@carpool/shared';
 import { useNavigate } from 'react-router-dom';
 import { createRideRequest } from '../features/ride-requests/rideRequestsApi';
+import PlacePicker from '../features/places/PlacePicker';
 import { useToast } from '../components/ToastContext';
 import { BackButton, PrimaryButton } from '../components/ui';
 import { dateKey } from '../lib/format';
@@ -19,8 +21,8 @@ export default function CreateRideRequestPage() {
   const say = useToast();
   const window = defaultWindow();
 
+  const [destination, setDestination] = useState<PlaceRef | null>(null);
   const [form, setForm] = useState({
-    destination: '',
     dateFrom: window.from,
     dateTo: window.to,
     seatsNeeded: 1,
@@ -31,11 +33,16 @@ export default function CreateRideRequestPage() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!destination) {
+      setError('Wybierz cel przejazdu.');
+      return;
+    }
     setBusy(true);
     setError('');
     try {
       await createRideRequest({
-        destination: form.destination.trim(),
+        destination: destination.name,
+        destinationPlaceId: destination.placeId ?? undefined,
         // Pola typu `date` dają samą datę — doba liczy się od północy do północy.
         dateFrom: new Date(`${form.dateFrom}T00:00`).toISOString(),
         dateTo: new Date(`${form.dateTo}T23:59`).toISOString(),
@@ -64,11 +71,12 @@ export default function CreateRideRequestPage() {
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div className="field">
-            <label htmlFor="r-destination">Dokąd</label>
-            <input id="r-destination" className="input" placeholder="Zakopane" required
-              value={form.destination} onChange={(e) => setForm({ ...form, destination: e.target.value })} />
-          </div>
+          <PlacePicker
+            label="Dokąd"
+            placeholder="Zakopane, Bieszczady…"
+            value={destination}
+            onChange={setDestination}
+          />
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <div className="field">

@@ -16,7 +16,12 @@ import { api } from '../../api/client';
 
 export interface NewTrip {
   title: string;
+  /** Etykieta celu — wysyłana zawsze, także przy własnej nazwie spoza bazy. */
   destination: string;
+  destinationPlaceId?: string;
+  /** Baza / dojazd: nazwa i, o ile wybrana z podpowiedzi, id miejsca. */
+  baseName?: string;
+  basePlaceId?: string;
   description?: string;
   startsAt: string;
   endsAt: string;
@@ -30,7 +35,9 @@ export interface NewLeg {
   arrivalAt?: string;
 }
 
-export const listTrips = () => api<TripSummary[]>('/trips');
+/** `placeId` zawęża listę do miejsca razem z jego okolicą w hierarchii. */
+export const listTrips = (placeId?: string) =>
+  api<TripSummary[]>(placeId ? `/trips?placeId=${encodeURIComponent(placeId)}` : '/trips');
 
 export const getTrip = (id: string) => api<Trip>(`/trips/${id}`);
 

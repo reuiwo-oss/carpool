@@ -1,7 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { DEFAULT_INTERIOR, seatLayoutFor, type TripSummary, type Seat } from '@carpool/shared';
+import {
+  DEFAULT_INTERIOR,
+  seatLayoutFor,
+  type PlaceRef,
+  type Seat,
+  type TripSummary,
+} from '@carpool/shared';
 import { listTrips } from '../features/trips/tripsApi';
+import PlacePicker from '../features/places/PlacePicker';
 import { useAuth } from '../features/auth/AuthContext';
 import SeatMap from '../features/seat-picker/SeatMap';
 import { BellIcon, PlusIcon } from '../components/icons';
@@ -10,8 +17,6 @@ import { formatWhen, nextDayChips, plural } from '../lib/format';
 
 /** Schemat do stanu pustego: domyślne wnętrze z samymi wolnymi fotelami. */
 const EMPTY_MAP_SEATS: Seat[] = seatLayoutFor(DEFAULT_INTERIOR);
-
-const norm = (s: string) => s.trim().toLowerCase();
 
 const seatsCount = (n: number) => `${n} ${plural(n, 'wolne', 'wolne', 'wolnych')}`;
 
@@ -23,34 +28,41 @@ export default function TripsListPage() {
   const [loadError, setLoadError] = useState('');
 
   // Stan wyszukiwania mieszka w URL — wynik da się odświeżyć i wysłać linkiem.
-  const to = params.get('to') ?? '';
+  // Nazwa miejsca leci obok id, żeby po odświeżeniu strony było czym wypełnić
+  // pole; samo id nic nikomu nie mówi.
+  const placeId = params.get('placeId') ?? '';
+  const placeName = params.get('place') ?? '';
   const day = params.get('day') ?? 'all';
 
-  const setQuery = (next: Partial<{ to: string; day: string }>) => {
-    const merged = { to, day, ...next };
+  const place: PlaceRef | null = placeId ? { placeId, name: placeName } : null;
+
+  const setQuery = (next: Partial<{ placeId: string; place: string; day: string }>) => {
+    const merged = { placeId, place: placeName, day, ...next };
     const clean = Object.entries(merged).filter(([k, v]) => v && !(k === 'day' && v === 'all'));
     setParams(Object.fromEntries(clean), { replace: true });
   };
 
+  // Zawężenie po miejscu robi serwer — zna hierarchię, więc wybór Tatr
+  // pokazuje też wyjazdy na Rysy. Przeglądarka nie ma jak tego policzyć.
   const load = () => {
     setLoadError('');
-    listTrips().then(setTrips).catch((e) => setLoadError((e as Error).message));
+    setTrips(null);
+    listTrips(placeId || undefined)
+      .then(setTrips)
+      .catch((e) => setLoadError((e as Error).message));
   };
 
-  useEffect(load, []);
+  useEffect(load, [placeId]);
 
   const chips = useMemo(() => nextDayChips(3), []);
 
   const results = useMemo(() => {
     if (!trips) return [];
-    return trips.filter((t) => {
-      if (to && !norm(`${t.destination} ${t.title}`).includes(norm(to))) return false;
-      if (day !== 'all' && formatWhen(t.startsAt).key !== day) return false;
-      return true;
-    });
-  }, [trips, to, day]);
+    if (day === 'all') return trips;
+    return trips.filter((t) => formatWhen(t.startsAt).key === day);
+  }, [trips, day]);
 
-  const target = to ? `do celu „${to}"` : 'w tym terminie';
+  const target = placeName ? `do celu „${placeName}"` : 'w tym terminie';
 
   return (
     <div className="screen">
@@ -60,11 +72,17 @@ export default function TripsListPage() {
       </div>
 
       <div style={{ padding: '14px 20px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <div className="field">
-          <label htmlFor="q-to">Dokąd</label>
-          <input id="q-to" className="input" placeholder="Cel wyjazdu" style={{ minHeight: 44 }}
-            value={to} onChange={(e) => setQuery({ to: e.target.value })} />
-        </div>
+        {/* Bez własnych nazw: filtr ma sens tylko dla miejsc, które wycieczki
+            mają przypięte. Wyczyszczenie wraca do pełnej listy. */}
+        <PlacePicker
+          label="Dokąd?"
+          placeholder="Pasmo, szczyt albo miejscowość"
+          allowCustom={false}
+          value={place}
+          onChange={(next) =>
+            setQuery({ placeId: next?.placeId ?? '', place: next?.name ?? '' })
+          }
+        />
 
         <div style={{ display: 'flex', gap: 6 }}>
           <button type="button" className={`btn ${day === 'all' ? 'btn-primary' : 'btn-secondary'}`}
