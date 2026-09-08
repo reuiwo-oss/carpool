@@ -62,6 +62,7 @@ npm run prisma:generate --workspace apps/api      # regeneracja klienta Prisma p
 npm test                                          # testy jednostkowe pakietu shared
 npm test --workspace apps/api                     # testy wyszukiwarki miejsc (wymagają bazy z seedem)
 node docs/weryfikacja-modelu-wycieczkowego.mjs    # scenariusz end-to-end na działającym API
+node docs/weryfikacja-bazy-miejsc.mjs             # scenariusz end-to-end dla bazy miejsc
 ```
 
 > Przy edycji `packages/shared` trzymaj watch w osobnym terminalu — bez tego API
