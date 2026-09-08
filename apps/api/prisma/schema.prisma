@@ -70,6 +70,57 @@ enum MessageKind {
   CANCELLED
 }
 
+/// Nazwa geograficzna z Państwowego Rejestru Nazw Geograficznych (PRNG) albo
+/// dopisana ręcznie. Jedna tabela na wszystkie typy miejsc — pole wyszukiwania
+/// w kliencie jest jedno, a typ jest tylko etykietą przy podpowiedzi.
+enum PlaceType {
+  PEAK
+  RANGE
+  PASS
+  TOWN
+  REGION
+}
+
+/// Hierarchia jest płytka i luźna: szczyt → pasmo → region. Ustawiamy ją tylko
+/// dla kuratorowanej listy popularnych miejsc — PRNG nie podaje, w którym
+/// paśmie leży szczyt, więc reszta bazy zostaje bez rodzica.
+model Place {
+  id       String    @id @default(cuid())
+  name     String
+  /// Małe litery bez diakrytyków — po tym szukają i baza, i klient. Liczy to
+  /// jedna funkcja `normalizeName` z pakietu shared, wspólna dla obu stron.
+  nameNorm String
+  type     PlaceType
+  parent   Place?    @relation("PlaceHierarchy", fields: [parentId], references: [id])
+  parentId String?
+  children Place[]   @relation("PlaceHierarchy")
+
+  lat       Float
+  lng       Float
+  elevation Int?
+
+  /// Nazwy oboczne z PRNG i dopisane ręcznie (np. „Diablak" dla Babiej Góry).
+  aliases     String[] @default([])
+  aliasesNorm String[] @default([])
+
+  /// 0 = miejsce jest tylko w pełnej bazie i szuka go serwer, > 0 = wchodzi
+  /// do krótkiej listy ładowanej raz do klienta.
+  popularity Int      @default(0)
+  /// "prng:<idPRNG>" albo "manual" — klucz idempotencji importu.
+  source     String
+  /// Powiat albo inny dopisek odróżniający miejsca o tej samej nazwie —
+  /// samych „Łysych Gór" jest w Polsce kilkaset.
+  region     String?
+  createdAt  DateTime @default(now())
+
+  tripsAsDestination Trip[]        @relation("TripDestination")
+  tripsAsBase        Trip[]        @relation("TripBase")
+  requests           RideRequest[]
+
+  @@index([nameNorm])
+  @@index([type, popularity])
+}
+
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
@@ -90,11 +141,11 @@ model User {
 }
 
 model Vehicle {
-  id      String @id @default(cuid())
-  owner   User   @relation(fields: [ownerId], references: [id])
-  ownerId String
-  make    String
-  model   String
+  id         String   @id @default(cuid())
+  owner      User     @relation(fields: [ownerId], references: [id])
+  ownerId    String
+  make       String
+  model      String
   /// Wnętrze auta (INTERIORS w shared) — z niego wynikają liczba miejsc
   /// i kształt schematu. String, nie enum: kolejne warianty bez migracji.
   interior   String   @default("sedan")
@@ -106,6 +157,9 @@ model Vehicle {
 model Trip {
   id          String         @id @default(cuid())
   title       String
+  /// Nazwa celu do wyświetlenia. Zostaje także przy wybranym `destinationPlace`:
+  /// raz jako zdenormalizowana etykieta (lista wycieczek nie musi dociągać
+  /// miejsca), raz jako jedyny zapis celu, gdy ktoś wpisał własną nazwę.
   destination String
   description String?
   /// Wyliczane z odcinków aut: najwcześniejszy wyjazd „tam" i najpóźniejszy
@@ -118,16 +172,25 @@ model Trip {
   createdById String
   createdAt   DateTime       @default(now())
 
+  /// Cel wycieczki: pasmo albo szczyt. Puste, gdy cel jest własną nazwą.
+  destinationPlace   Place?  @relation("TripDestination", fields: [destinationPlaceId], references: [id])
+  destinationPlaceId String?
+  /// Baza / dojazd, zwykle miejscowość. Opcjonalna — nie każdy wyjazd ma bazę.
+  basePlace          Place?  @relation("TripBase", fields: [basePlaceId], references: [id])
+  basePlaceId        String?
+  /// Etykieta bazy — z tego samego powodu co `destination`.
+  baseName           String?
+
   participants  TripParticipant[]
   rides         Ride[]
   conversations Conversation[]
 }
 
 model TripParticipant {
-  trip   Trip   @relation(fields: [tripId], references: [id], onDelete: Cascade)
-  tripId String
-  user   User   @relation(fields: [userId], references: [id])
-  userId String
+  trip        Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  tripId      String
+  user        User     @relation(fields: [userId], references: [id])
+  userId      String
   /// Jedyna rola zapisywana wprost — reszta wylicza się z danych.
   isOrganizer Boolean  @default(false)
   joinedAt    DateTime @default(now())
@@ -137,13 +200,13 @@ model TripParticipant {
 
 /// Auto w wycieczce — jedno na uczestnika, na całą wycieczkę.
 model Ride {
-  id        String  @id @default(cuid())
-  trip      Trip    @relation(fields: [tripId], references: [id], onDelete: Cascade)
-  tripId    String
-  driver    User    @relation(fields: [driverId], references: [id])
-  driverId  String
-  vehicle   Vehicle @relation(fields: [vehicleId], references: [id])
-  vehicleId String
+  id                 String   @id @default(cuid())
+  trip               Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  tripId             String
+  driver             User     @relation(fields: [driverId], references: [id])
+  driverId           String
+  vehicle            Vehicle  @relation(fields: [vehicleId], references: [id])
+  vehicleId          String
   /// Kopia układu z pojazdu w chwili zgłoszenia auta — późniejsza zmiana
   /// w garażu nie przestawia foteli ludziom, którzy już je zajęli.
   seatLayoutSnapshot Json
@@ -193,16 +256,19 @@ model SeatReservation {
 /// z wycieczką — uczestnik wycieczki bez miejsca sam w sobie jest sygnałem
 /// zapotrzebowania.
 model RideRequest {
-  id          String        @id @default(cuid())
-  user        User          @relation(fields: [userId], references: [id])
-  userId      String
-  destination String
-  dateFrom    DateTime
-  dateTo      DateTime
-  seatsNeeded Int           @default(1)
-  note        String?
-  status      RequestStatus @default(OPEN)
-  createdAt   DateTime      @default(now())
+  id                 String        @id @default(cuid())
+  user               User          @relation(fields: [userId], references: [id])
+  userId             String
+  destination        String
+  /// Jak w `Trip` — puste, gdy proszący wpisał własną nazwę celu.
+  destinationPlace   Place?        @relation(fields: [destinationPlaceId], references: [id])
+  destinationPlaceId String?
+  dateFrom           DateTime
+  dateTo             DateTime
+  seatsNeeded        Int           @default(1)
+  note               String?
+  status             RequestStatus @default(OPEN)
+  createdAt          DateTime      @default(now())
 }
 
 /// Wątek między uczestnikiem a kierowcą w kontekście wycieczki. Przeżywa

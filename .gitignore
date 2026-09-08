@@ -30,3 +30,8 @@ Thumbs.db
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Surowe dane PRNG (setki MB) — pobierane ręcznie z dane.gov.pl.
+# Commitujemy tylko skrypty importu i wygenerowany places.seed.json.
+apps/api/prisma/data/prng/
+apps/api/prisma/data/shp/
