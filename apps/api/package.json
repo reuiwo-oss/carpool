@@ -6,7 +6,8 @@
     "build": "nest build",
     "prisma:migrate": "prisma migrate dev",
     "prisma:generate": "prisma generate",
-    "places:import": "ts-node prisma/scripts/import-places.ts"
+    "places:import": "ts-node prisma/scripts/import-places.ts",
+    "places:popular": "ts-node prisma/scripts/apply-popular-places.ts"
   },
   "dependencies": {
     "@carpool/shared": "*",
