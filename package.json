@@ -8,5 +8,11 @@
     "dev:web": "npm run build:shared && npm run dev --workspace apps/web",
     "db:migrate": "npm run prisma:migrate --workspace apps/api",
     "test": "npm run test --workspace packages/shared"
+  },
+  "allowScripts": {
+    "prisma": true,
+    "@prisma/client": true,
+    "@prisma/engines": true,
+    "esbuild": true
   }
 }

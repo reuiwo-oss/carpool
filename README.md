@@ -31,6 +31,10 @@ docker compose up -d
 npm install
 ```
 
+> npm 12 domyślnie blokuje skrypty instalacyjne zależności. Te, których projekt
+> naprawdę potrzebuje (`prisma`, `@prisma/client`, `@prisma/engines`, `esbuild`),
+> są dopuszczone w bloku `allowScripts` w głównym `package.json`.
+
 **3. Zmienne środowiskowe**
 
 ```bash
