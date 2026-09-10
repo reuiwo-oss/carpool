@@ -3,7 +3,7 @@
  * (poza localStorage) — przy przejściu na React Native wystarczy podmienić
  * magazyn tokenu na AsyncStorage/SecureStore.
  */
-const BASE = '/api';
+const BASE = `${import.meta.env.VITE_API_URL ?? ''}/api`;
 
 /**
  * Gdy backend jest nieosiągalny, proxy Vite odpowiada pustym 500 — nie jest to
