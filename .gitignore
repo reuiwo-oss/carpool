@@ -35,3 +35,8 @@ Thumbs.db
 # Commitujemy tylko skrypty importu i wygenerowany places.seed.json.
 apps/api/prisma/data/prng/
 apps/api/prisma/data/shp/
+
+# Artefakty wdrożeniowe — zrzuty bazy i konfiguracja produkcyjna z hasłami
+places.dump
+*.dump
+prod/
